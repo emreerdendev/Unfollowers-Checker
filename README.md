@@ -22,17 +22,17 @@ See who you follow that doesn't follow you back — across **GitHub**, **Bluesky
 - **GitHub, Bluesky & Mastodon** — paste a handle (a bare name, an `@handle`, or even a full profile URL all work; Mastodon uses `user@instance`). The app fetches the account's followers and following lists and shows the difference. Reading is free; signing in is only needed to unfollow on your own account. (Mastodon read works for any instance; sign-in and unfollow target the configured instance.)
 - **GitLab** — sign in with GitLab (gitlab.com). Because GitLab's follower/following lists require authentication, there's no "look up any handle" mode: you sign in once and the app loads *your own* list, where you can bulk-unfollow. Free GitLab OAuth app, no paid plan needed.
 - **X (Twitter)** — download your data archive from X (Settings → *Download an archive of your data*), then upload `following.js` and `follower.js` from it. The diff is computed offline in your browser; results link to each profile (X archives only contain numeric account IDs, so handles aren't shown).
-- **Instagram** — copy the provided script and paste it into your browser's developer console while on instagram.com. It scans the people you follow using your own session and never sends data to any server.
+- **Instagram** — copy the provided script and paste it into your browser's developer console while on instagram.com. It loads your followers and the people you follow using your own session, diffs them in the browser, and never sends data to any server.
 
 ### Instagram panel features
 
 The pasted script injects a small, self-contained panel into instagram.com. It can:
 
-- **Scan smart** — only checks the people you follow and reads Instagram's follow-back status, so it stays fast even on large accounts.
+- **Scan reliably** — loads your followers first, then checks everyone you follow against them. Progress is saved after every page, so if Instagram interrupts (rate limit, sign-out, closed tab) you can resume instead of starting over, and the last result can be reopened without rescanning.
 - **Search & filter** — find by name/username and filter by verified / private / no profile picture, with one-tap "select all verified / private / no-photo" shortcuts.
 - **Bulk unfollow** — select accounts and unfollow them in batches, with a live progress bar and a one-click retry for any that failed.
-- **Review the outcome** — when it finishes, it lists exactly who was unfollowed (and anyone that failed) so you can see the result.
-- **Stay under the radar** — randomized delays and cooldowns keep activity human-like; on rate-limits it automatically backs off and pauses instead of failing silently. (Keep the tab and browser open while it runs.)
+- **Verified unfollows** — uses the same request Instagram's own web app sends and confirms each unfollow with Instagram, so a silently ignored request is reported as failed (with the reason) instead of counted as done.
+- **Stay under the radar** — randomized delays and cooldowns keep activity human-like; on a rate limit or action block it pauses automatically instead of hammering on or failing silently. (Keep the tab in front and the browser open while it runs.)
 - **Tune the timing** — every delay and cooldown is configurable in settings, or reset to the conservative defaults.
 - **Comfortable UI** — drag the panel anywhere, resize it from any edge or corner, minimize it, and switch theme (light / dark / system) and language (EN / TR / DE / FR / ES). Your preferences are remembered.
 

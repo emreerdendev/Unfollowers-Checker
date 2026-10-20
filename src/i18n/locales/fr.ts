@@ -202,7 +202,7 @@ export const fr: Translation = {
     troubleshoot:
       'Pas de panneau après avoir appuyé sur Entrée ? Assurez-vous d’être connecté et sur instagram.com, rechargez la page et recollez le script.',
     tip_pre:
-      'Astuce : les navigateurs peuvent avertir avant de vous laisser coller dans la console — cet avertissement existe car coller du code que vous ne comprenez pas peut être dangereux. Ce script lit uniquement votre liste d’abonnements et désabonne ce que vous choisissez. Vous pouvez le consulter à tout moment sur',
+      'Astuce : les navigateurs peuvent avertir avant de vous laisser coller dans la console — cet avertissement existe car coller du code que vous ne comprenez pas peut être dangereux. Ce script lit uniquement vos listes d’abonnés et d’abonnements et désabonne ce que vous choisissez. Vous pouvez le consulter à tout moment sur',
     bmTitle: 'Ou utilisez un bookmarklet',
     bmIntro:
       'Vous préférez un seul clic ? Glissez ce bouton dans votre barre de favoris, puis ouvrez Instagram et cliquez dessus pour l’exécuter.',
@@ -215,11 +215,11 @@ export const fr: Translation = {
       'Le désabonnement en masse peut enfreindre les politiques d’Instagram sur les comportements automatisés et déclencher un blocage temporaire des actions. L’outil espace les requêtes avec des délais et des pauses aléatoires pour rester humain, mais l’utilisation se fait à vos risques. Encore une fois : rien ne quitte votre navigateur.',
     featuresTitle: 'Ce que le panneau permet',
     features: {
-      scan: 'Analyse uniquement les personnes que vous suivez et utilise le statut de suivi d’Instagram — il reste rapide même sur les grands comptes.',
+      scan: 'Charge d’abord vos abonnés, puis compare chaque personne que vous suivez avec eux. Si Instagram interrompt l’analyse, la progression est enregistrée pour reprendre au lieu de recommencer — et votre dernier résultat peut être rouvert sans nouvelle analyse.',
       manage: 'Recherchez et filtrez par vérifié / privé / sans photo de profil, avec des raccourcis « sélectionner tous les vérifiés / privés / sans photo ».',
       unfollow: 'Sélectionnez des comptes et désabonnez-vous en masse, avec une barre de progression en direct et une nouvelle tentative en un clic pour les échecs.',
-      summary: 'À la fin, il liste précisément qui a été désabonné (et les échecs éventuels), pour que vous puissiez vérifier le résultat.',
-      safety: 'Des délais et pauses aléatoires gardent un comportement humain ; en cas de limitation, l’outil ralentit et se met en pause au lieu d’échouer en silence.',
+      summary: 'À la fin, il liste précisément qui a été désabonné — chaque désabonnement est vérifié auprès d’Instagram — et la raison des échecs éventuels, pour que vous puissiez vérifier le résultat.',
+      safety: 'Des délais et pauses aléatoires gardent un comportement humain ; en cas de limitation ou de blocage d’action, l’outil se met en pause automatiquement au lieu d’insister ou d’échouer en silence.',
       settings: 'Réglez chaque délai (analyse/désabonnement, pauses) dans les paramètres, ou rétablissez les valeurs prudentes par défaut.',
       comfort: 'Déplacez le panneau où vous voulez, redimensionnez-le depuis n’importe quel bord, réduisez-le et changez de thème (clair/sombre/système) et de langue — vos choix sont mémorisés.',
     },

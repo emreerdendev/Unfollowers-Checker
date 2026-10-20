@@ -202,7 +202,7 @@ export const es: Translation = {
     troubleshoot:
       '¿No aparece el panel tras pulsar Intro? Asegúrate de haber iniciado sesión y estar en instagram.com, recarga la página y pega el script de nuevo.',
     tip_pre:
-      'Consejo: los navegadores pueden advertirte antes de dejarte pegar en la consola — esa advertencia existe porque pegar código que no entiendes puede ser peligroso. Este script solo lee tu lista de seguidos y deja de seguir lo que elijas. Puedes leerlo en cualquier momento en',
+      'Consejo: los navegadores pueden advertirte antes de dejarte pegar en la consola — esa advertencia existe porque pegar código que no entiendes puede ser peligroso. Este script solo lee tus listas de seguidores y seguidos y deja de seguir lo que elijas. Puedes leerlo en cualquier momento en',
     bmTitle: 'O usa un bookmarklet',
     bmIntro:
       '¿Prefieres un solo clic? Arrastra este botón a tu barra de marcadores, luego abre Instagram y haz clic en él para ejecutarlo.',
@@ -215,11 +215,11 @@ export const es: Translation = {
       'Dejar de seguir de forma masiva puede infringir las políticas de comportamiento automatizado de Instagram y provocar un bloqueo temporal de acciones. La herramienta espacia las solicitudes con retrasos y pausas aleatorias para parecer humana, pero el uso es bajo tu responsabilidad. De nuevo: nada sale de tu navegador.',
     featuresTitle: 'Lo que puede hacer el panel',
     features: {
-      scan: 'Analiza solo a las personas que sigues y usa el estado de seguimiento de Instagram, por lo que es rápido incluso en cuentas grandes.',
+      scan: 'Primero carga tus seguidores y luego compara con ellos a cada persona que sigues. Si Instagram lo interrumpe, el progreso se guarda para reanudar en lugar de empezar de nuevo — y tu último resultado se puede abrir sin volver a analizar.',
       manage: 'Busca y filtra por verificado / privado / sin foto de perfil, con atajos para “seleccionar todos los verificados / privados / sin foto”.',
       unfollow: 'Selecciona cuentas y deja de seguir en masa, con una barra de progreso en vivo y un reintento con un clic para las que fallen.',
-      summary: 'Al terminar, muestra exactamente a quién dejaste de seguir (y los que fallaron), para que revises el resultado.',
-      safety: 'Los retrasos y pausas aleatorias lo mantienen humano; ante límites de uso, se ralentiza y pausa automáticamente en vez de fallar en silencio.',
+      summary: 'Al terminar, muestra exactamente a quién dejaste de seguir — cada acción se verifica con Instagram — y por qué falló alguna, para que revises el resultado.',
+      safety: 'Los retrasos y pausas aleatorias lo mantienen humano; ante un límite de uso o un bloqueo de acción se pausa automáticamente en vez de insistir o fallar en silencio.',
       settings: 'Ajusta cada tiempo (retrasos de análisis/dejar de seguir, pausas) en los ajustes, o restaura los valores prudentes por defecto.',
       comfort: 'Arrastra el panel a donde quieras, cambia su tamaño desde cualquier borde, minimízalo y cambia el tema (claro/oscuro/sistema) y el idioma — se recuerdan tus elecciones.',
     },

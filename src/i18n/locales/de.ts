@@ -203,7 +203,7 @@ export const de: Translation = {
     troubleshoot:
       'Kein Panel nach dem Drücken von Enter? Stelle sicher, dass du angemeldet und auf instagram.com bist, lade die Seite neu und füge das Skript erneut ein.',
     tip_pre:
-      'Tipp: Browser warnen möglicherweise, bevor du in die Konsole einfügen darfst — diese Warnung gibt es, weil das Einfügen von Code, den du nicht verstehst, gefährlich sein kann. Dieses Skript liest nur deine Folgt-Liste und entfolgt, was du auswählst. Du kannst es jederzeit hier lesen:',
+      'Tipp: Browser warnen möglicherweise, bevor du in die Konsole einfügen darfst — diese Warnung gibt es, weil das Einfügen von Code, den du nicht verstehst, gefährlich sein kann. Dieses Skript liest nur deine Follower- und Folgt-Liste und entfolgt, was du auswählst. Du kannst es jederzeit hier lesen:',
     bmTitle: 'Oder ein Bookmarklet verwenden',
     bmIntro:
       'Lieber mit einem Klick? Zieh diesen Button in deine Lesezeichenleiste, öffne dann Instagram und klicke darauf, um ihn auszuführen.',
@@ -216,11 +216,11 @@ export const de: Translation = {
       'Massenhaftes Entfolgen kann gegen Instagrams Richtlinien zu automatisiertem Verhalten verstoßen und eine vorübergehende Aktionssperre auslösen. Das Tool verteilt Anfragen mit zufälligen Verzögerungen und Pausen, um menschlich zu wirken, aber die Nutzung erfolgt auf eigene Gefahr. Nochmals: Nichts verlässt deinen Browser.',
     featuresTitle: 'Was das Panel kann',
     features: {
-      scan: 'Scannt nur die Personen, denen du folgst, und nutzt Instagrams Rückfolge-Status — so bleibt es auch bei großen Konten schnell.',
+      scan: 'Lädt zuerst deine Follower und gleicht dann jeden, dem du folgst, damit ab. Unterbricht Instagram, bleibt der Fortschritt gespeichert, sodass du fortsetzen statt neu beginnen kannst — und dein letztes Ergebnis lässt sich ohne neuen Scan öffnen.',
       manage: 'Suche und filtere nach verifiziert / privat / kein Profilbild, mit Schnellbefehlen „alle verifizierten / privaten / ohne Bild auswählen“.',
       unfollow: 'Konten auswählen und massenhaft entfolgen, mit Live-Fortschrittsbalken und Ein-Klick-Wiederholung für fehlgeschlagene.',
-      summary: 'Am Ende listet es genau auf, wem entfolgt wurde (und was fehlschlug), damit du das Ergebnis prüfen kannst.',
-      safety: 'Zufällige Verzögerungen und Pausen wirken menschlich; bei Rate-Limits wird automatisch gedrosselt und pausiert, statt still zu scheitern.',
+      summary: 'Am Ende listet es genau auf, wem entfolgt wurde — jedes Entfolgen wird bei Instagram geprüft — und warum etwas fehlschlug, damit du das Ergebnis prüfen kannst.',
+      safety: 'Zufällige Verzögerungen und Pausen wirken menschlich; bei Rate-Limits oder Aktionssperren pausiert es automatisch, statt weiterzumachen oder still zu scheitern.',
       settings: 'Stelle jedes Timing (Scan-/Entfolgen-Verzögerungen, Pausen) in den Einstellungen ein oder setze die konservativen Standardwerte zurück.',
       comfort: 'Ziehe das Panel überallhin, ändere die Größe an jeder Kante, minimiere es und wechsle Design (hell/dunkel/System) und Sprache — deine Auswahl wird gespeichert.',
     },

@@ -200,7 +200,7 @@ export const en = {
     troubleshoot:
       'No panel after pressing Enter? Make sure you’re logged in and on instagram.com, refresh the page, and paste the script again.',
     tip_pre:
-      "Tip: browsers may warn before letting you paste into the console — that warning exists because pasting code you don't understand can be dangerous. This script only reads your following list and unfollows what you pick. You can read it any time at",
+      "Tip: browsers may warn before letting you paste into the console — that warning exists because pasting code you don't understand can be dangerous. This script only reads your followers and following lists and unfollows what you pick. You can read it any time at",
     bmTitle: 'Or use a bookmarklet',
     bmIntro:
       'Prefer one click? Drag this button to your bookmarks bar, then open Instagram and click it to run.',
@@ -213,11 +213,11 @@ export const en = {
       "Bulk unfollowing can run against Instagram's automated-behavior policies and may trigger a temporary action block. The tool spaces requests out with randomized delays and cooldowns to stay human-like, but use is at your own risk. Again: nothing leaves your browser.",
     featuresTitle: 'What the panel can do',
     features: {
-      scan: 'Scans only the people you follow and uses Instagram’s follow-back status, so it stays fast even on large accounts.',
+      scan: 'Loads your followers, then checks everyone you follow against them. If Instagram interrupts, progress is saved so you can resume instead of starting over — and your last result can be reopened without rescanning.',
       manage: 'Search, and filter by verified / private / no profile picture, with quick “select all verified / private / no-photo” shortcuts.',
       unfollow: 'Select accounts and bulk-unfollow, with a live progress bar and a one-click retry for any that failed.',
-      summary: 'When it finishes, it lists exactly who was unfollowed (and anyone that failed), so you can review the outcome.',
-      safety: 'Randomized delays and cooldowns keep it human-like; on rate-limits it auto-backs-off and pauses instead of failing silently.',
+      summary: 'When it finishes, it lists exactly who was unfollowed — each unfollow is verified with Instagram — and why any failed, so you can review the outcome.',
+      safety: 'Randomized delays and cooldowns keep it human-like; on a rate limit or action block it pauses automatically instead of hammering on or failing silently.',
       settings: 'Tune every timing (scan/unfollow delays, cooldowns) in settings, or restore the conservative defaults.',
       comfort: 'Drag the panel anywhere, resize it from any edge, minimize it, and switch theme (light/dark/system) and language — your choices are remembered.',
     },

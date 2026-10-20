@@ -202,7 +202,7 @@ export const tr: Translation = {
     troubleshoot:
       'Enter’a bastıktan sonra panel çıkmadıysa: giriş yaptığından ve instagram.com’da olduğundan emin ol, sayfayı yenile ve script’i tekrar yapıştır.',
     tip_pre:
-      'İpucu: tarayıcılar konsola yapıştırmadan önce uyarı verebilir — bu uyarı, anlamadığın bir kodu yapıştırmanın tehlikeli olabileceği içindir. Bu script yalnızca takip listeni okur ve senin seçtiklerinin takibini bırakır. Dilediğin zaman şu adresten okuyabilirsin:',
+      'İpucu: tarayıcılar konsola yapıştırmadan önce uyarı verebilir — bu uyarı, anlamadığın bir kodu yapıştırmanın tehlikeli olabileceği içindir. Bu script yalnızca takipçi ve takip listelerini okur ve senin seçtiklerinin takibini bırakır. Dilediğin zaman şu adresten okuyabilirsin:',
     bmTitle: 'Veya bir bookmarklet kullan',
     bmIntro:
       'Tek tıkla mı istersin? Bu butonu yer imi çubuğuna sürükle, sonra Instagram’ı açıp tıklayarak çalıştır.',
@@ -215,11 +215,11 @@ export const tr: Translation = {
       'Toplu takip bırakma, Instagram’ın otomatik davranış politikalarına aykırı olabilir ve geçici bir işlem engeline yol açabilir. Araç, insansı kalmak için istekleri rastgele gecikmeler ve molalarla yayar, ama kullanım kendi sorumluluğundadır. Yine: tarayıcından hiçbir şey çıkmaz.',
     featuresTitle: 'Panel neler yapabiliyor',
     features: {
-      scan: 'Yalnızca takip ettiklerini tarar ve Instagram’ın geri takip durumunu kullanır; büyük hesaplarda bile hızlı kalır.',
+      scan: 'Önce takipçilerini yükler, sonra takip ettiğin herkesi onlarla karşılaştırır. Instagram taramayı keserse ilerleme kaydedilir, baştan başlamak yerine devam edebilirsin — son sonucu da yeniden taramadan açabilirsin.',
       manage: 'Ara ve onaylı / gizli / profil fotoğrafı olmayan filtrele; “tüm onaylıları / gizlileri / fotoğrafsızları seç” kısayollarıyla hızlıca seç.',
       unfollow: 'Hesapları seçip toplu takip bırak; canlı ilerleme çubuğu ve başarısız olanlar için tek tıkla tekrar deneme.',
-      summary: 'İşlem bitince kimlerin takipten çıkarıldığını (ve başarısız olanları) tek tek listeler, sonucu gözden geçirebilirsin.',
-      safety: 'Rastgele gecikme ve molalar insansı tutar; kısıtlamada sessizce başarısız olmak yerine otomatik geri çekilip duraklar.',
+      summary: 'İşlem bitince kimlerin takipten çıkarıldığını tek tek listeler — her işlem Instagram\'dan doğrulanır — ve başarısız olanların nedenini gösterir.',
+      safety: 'Rastgele gecikme ve molalar insansı tutar; kısıtlama ya da işlem engelinde zorlamak veya sessizce başarısız olmak yerine otomatik duraklar.',
       settings: 'Her zamanlamayı (tarama/bırakma gecikmeleri, molalar) ayarlardan değiştir ya da muhafazakar varsayılanlara dön.',
       comfort: 'Paneli istediğin yere sürükle, her kenardan boyutlandır, küçült; temayı (açık/koyu/sistem) ve dili değiştir — seçimlerin hatırlanır.',
     },
