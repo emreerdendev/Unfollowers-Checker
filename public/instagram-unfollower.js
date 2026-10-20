@@ -11,26 +11,51 @@
     return;
   }
 
-  const APP_ID = "iu-app";
-  const STYLE_ID = "iu-style";
-  const STORAGE_KEY = "iu_state_v3";
+  const APP_ID = "uc-app";
+  const STYLE_ID = "uc-style";
+  const STORAGE_KEY = "uc_prefs_v1";
+  // Preferences saved by earlier versions of this panel; read once as a fallback
+  // so updating the script doesn't reset the user's settings/layout.
+  const LEGACY_STORAGE_KEY = "iu_state_v3";
+  // An interrupted scan is saved here so it can resume where it stopped.
+  const CHECKPOINT_KEY = "uc_scan_checkpoint_v1";
+  // The non-followers of the last completed scan (shown again without rescanning).
+  const LAST_SCAN_KEY = "uc_last_scan_v1";
+  const SAVED_SCAN_TTL = 24 * 60 * 60 * 1000;
+
+  // Instagram's own web-client identifiers; requests without them are treated
+  // as non-browser traffic and are refused far more often.
+  const IG_APP_ID = "936619743392459";
+  const IG_ASBD_ID = "129477";
   const IG_HEADERS = {
-    "x-ig-app-id": "936619743392459",
+    "x-ig-app-id": IG_APP_ID,
+    "x-asbd-id": IG_ASBD_ID,
     "x-requested-with": "XMLHttpRequest"
   };
+  // Instagram's web app unfollows through this GraphQL mutation. The legacy REST
+  // endpoints (/api/v1/friendships/destroy, /web/friendships/.../unfollow) now
+  // often answer 200 without actually unfollowing, so they're only a fallback
+  // when the page's session tokens can't be found.
+  const UNFOLLOW_DOC_ID = "27789106940691111";
+  const UNFOLLOW_FRIENDLY_NAME = "usePolarisUnfollowMutation";
 
   // Conservative defaults: slower = safer against Instagram's rate limiting and
   // action blocks. Users can still tune these in settings.
   const DEFAULT_TIMINGS = {
-    scanDelayMin: 900,
-    scanDelayMax: 1800,
-    scanPauseEveryPages: 5,
+    scanDelayMin: 1000,
+    scanDelayMax: 2000,
+    scanPauseEveryPages: 6,
     scanPauseMs: 10000,
+    usersPerRequest: 50,
     unfollowDelayMin: 6000,
     unfollowDelayMax: 12000,
     unfollowPauseEvery: 4,
     unfollowPauseMs: 300000
   };
+  // Instagram caps a friendship-list page at 200 users.
+  const MAX_USERS_PER_REQUEST = 200;
+  // ± jitter added to the long scan pause so it never repeats on a fixed beat.
+  const SCAN_PAUSE_JITTER_MS = 4000;
 
   // Ordered list of supported languages; the header button cycles through them.
   const LANGS = ["en", "tr", "de", "fr", "es"];
@@ -40,23 +65,26 @@
   const PANEL_MIN_HEIGHT = 320;
   const PANEL_MARGIN = 18;
   const MAX_RETRIES = 3;
+  // A 429 during the scan is waited out this many times (30s, 60s, …) before
+  // the scan stops and keeps its checkpoint for a later resume.
+  const RATE_LIMIT_RETRIES = 2;
+  const RATE_LIMIT_COOLDOWN_MS = 30000;
 
   const I18N = {
     en: {
       title: "Instagram Unfollower",
       subtitle: "See who doesn't follow you back",
       welcomeTitle: "Ready when you are",
-      welcomeBody: "We'll scan only the people you follow and use Instagram's follow-back status to keep the scan fast. Nothing is changed on your account during the scan.",
+      welcomeBody: "Your followers are loaded first, then everyone you follow is checked against them. Nothing is changed on your account during the scan.",
       scanBtn: "Scan now",
       scanning: "Scanning",
-      loadingFollowing: "Loading the people you follow",
-      loadingFollowers: "Checking follow-back status",
+      loadingFollowing: "Step 2 of 2: checking the people you follow",
+      loadingFollowers: "Step 1 of 2: loading your followers",
       paused: "Paused",
       pause: "Pause",
       resume: "Resume",
       cancel: "Cancel",
       ofTotal: "{current} of {total}",
-      ofUnknown: "{current} so far",
       scanCompletedToast: "{count} non-followers found",
       scanFailed: "Scan failed",
       retry: "Try again",
@@ -89,6 +117,7 @@
       currently: "Currently",
       nextActionIn: "Next action in {seconds}s",
       cooldownIn: "Cooldown — {seconds}s",
+      scanPause: "Long pause — {seconds}s",
       idle: "Ready",
       unfollowDoneTitle: "Done",
       unfollowDoneBody: "{ok} unfollowed, {fail} failed",
@@ -129,23 +158,45 @@
       pillScanning: "Scanning {current}/{total}",
       pillUnfollowing: "Unfollowing {current}/{total}",
       pillResults: "{count} non-followers",
-      pillIdle: "Open"
+      pillIdle: "Open",
+      scanNotice: "Large accounts can take a while. If Instagram interrupts the scan, your progress is saved — wait a bit, then resume instead of starting over.",
+      countFollowers: "{current} followers loaded",
+      countFollowing: "{current} accounts checked",
+      liveFound: "Non-followers found so far: {count}",
+      usersPerRequest: "Users requested per page",
+      sessionExpired: "Instagram signed you out. Sign in again, paste the script again and resume — the scan continues where it stopped.",
+      scanBlocked: "Instagram temporarily refused list requests for this account. Wait a few hours, then resume.",
+      networkError: "The connection dropped. Check your network and resume.",
+      limitedList: "Instagram is limiting this list right now, so the results can't be confirmed. Wait a while, then resume.",
+      blockedPaused: "Instagram blocked this action for now. Paused automatically — wait a few hours before resuming, or cancel.",
+      keepTabVisible: "Keep this tab in front — browsers slow down background tabs a lot.",
+      resumeScan: "Resume scan",
+      startOver: "Start over",
+      resumeHint: "A previous scan stopped partway. Continue from there instead of starting again.",
+      partialTitle: "Scan stopped partway",
+      partialBody: "{loaded} of the accounts you follow were checked. The non-followers below are confirmed; resume to check the rest.",
+      showLastScan: "Show last result ({count}, {age})",
+      lastScanNotice: "This list is from a scan {age}. Rescan for the current state.",
+      rescan: "Rescan",
+      reasonStillFollowing: "Instagram answered, but you still follow this account",
+      reasonUnconfirmed: "Instagram answered, but the unfollow couldn't be confirmed",
+      reasonRejected: "Instagram rejected the request",
+      reasonNetwork: "Connection error"
     },
     tr: {
       title: "Instagram Takip Etmeyenler",
       subtitle: "Seni geri takip etmeyenleri gör",
       welcomeTitle: "Hazır olduğunda başlat",
-      welcomeBody: "Sadece takip ettiklerin taranır ve Instagram'ın geri takip durumuyla hızlıca kontrol edilir. Tarama sırasında hesabında hiçbir şey değişmez.",
+      welcomeBody: "Önce takipçilerin yüklenir, ardından takip ettiğin herkes onlarla karşılaştırılır. Tarama sırasında hesabında hiçbir şey değişmez.",
       scanBtn: "Taramayı başlat",
       scanning: "Taranıyor",
-      loadingFollowing: "Takip ettiklerin yükleniyor",
-      loadingFollowers: "Geri takip durumu kontrol ediliyor",
+      loadingFollowing: "Adım 2/2: Takip ettiklerin kontrol ediliyor",
+      loadingFollowers: "Adım 1/2: Takipçilerin yükleniyor",
       paused: "Duraklatıldı",
       pause: "Duraklat",
       resume: "Devam et",
       cancel: "İptal",
       ofTotal: "{current} / {total}",
-      ofUnknown: "Şu ana kadar {current}",
       scanCompletedToast: "{count} takip etmeyen bulundu",
       scanFailed: "Tarama başarısız",
       retry: "Tekrar dene",
@@ -178,6 +229,7 @@
       currently: "Şu an",
       nextActionIn: "Sonraki işlem {seconds} sn sonra",
       cooldownIn: "Mola — {seconds} sn",
+      scanPause: "Uzun mola — {seconds} sn",
       idle: "Hazır",
       unfollowDoneTitle: "Tamamlandı",
       unfollowDoneBody: "{ok} başarılı, {fail} başarısız",
@@ -218,23 +270,45 @@
       pillScanning: "Taranıyor {current}/{total}",
       pillUnfollowing: "Bırakılıyor {current}/{total}",
       pillResults: "{count} takip etmeyen",
-      pillIdle: "Aç"
+      pillIdle: "Aç",
+      scanNotice: "Büyük hesaplarda tarama biraz sürebilir. Instagram taramayı keserse ilerlemen kaydedilir — baştan başlamak yerine biraz bekleyip devam et.",
+      countFollowers: "{current} takipçi yüklendi",
+      countFollowing: "{current} hesap kontrol edildi",
+      liveFound: "Şu ana kadar bulunan: {count}",
+      usersPerRequest: "Sayfa başına istenen kullanıcı",
+      sessionExpired: "Instagram oturumunu kapattı. Tekrar giriş yap, kodu yeniden yapıştır ve devam et — tarama kaldığı yerden sürer.",
+      scanBlocked: "Instagram bu hesap için liste isteklerini geçici olarak reddetti. Birkaç saat bekleyip devam et.",
+      networkError: "Bağlantı koptu. Ağını kontrol edip devam et.",
+      limitedList: "Instagram şu an bu listeyi kısıtlıyor, bu yüzden sonuçlar doğrulanamıyor. Bir süre bekleyip devam et.",
+      blockedPaused: "Instagram bu işlemi şimdilik engelledi. Otomatik duraklatıldı — devam etmeden önce birkaç saat bekle ya da iptal et.",
+      keepTabVisible: "Bu sekmeyi önde tut — tarayıcılar arka plandaki sekmeleri çok yavaşlatır.",
+      resumeScan: "Taramaya devam et",
+      startOver: "Baştan başla",
+      resumeHint: "Önceki tarama yarıda kaldı. Baştan başlamak yerine kaldığı yerden devam edebilirsin.",
+      partialTitle: "Tarama yarıda kaldı",
+      partialBody: "Takip ettiğin hesaplardan {loaded} tanesi kontrol edildi. Aşağıdakiler kesin olarak seni takip etmiyor; kalanlar için taramaya devam et.",
+      showLastScan: "Son sonucu göster ({count}, {age})",
+      lastScanNotice: "Bu liste {age} yapılan bir taramadan. Güncel durum için yeniden tara.",
+      rescan: "Yeniden tara",
+      reasonStillFollowing: "Instagram yanıt verdi ama bu hesabı hâlâ takip ediyorsun",
+      reasonUnconfirmed: "Instagram yanıt verdi ama takipten çıkma doğrulanamadı",
+      reasonRejected: "Instagram isteği reddetti",
+      reasonNetwork: "Bağlantı hatası"
     },
     de: {
       title: "Instagram Unfollower",
       subtitle: "Sieh, wer dir nicht zurückfolgt",
       welcomeTitle: "Bereit, wenn du es bist",
-      welcomeBody: "Es werden nur die Personen gescannt, denen du folgst, und Instagrams Rückfolge-Status genutzt, damit der Scan schnell bleibt. Während des Scans wird an deinem Konto nichts geändert.",
+      welcomeBody: "Zuerst werden deine Follower geladen, dann wird jeder, dem du folgst, mit ihnen abgeglichen. Während des Scans wird an deinem Konto nichts geändert.",
       scanBtn: "Jetzt scannen",
       scanning: "Wird gescannt",
-      loadingFollowing: "Lade die Personen, denen du folgst",
-      loadingFollowers: "Prüfe den Rückfolge-Status",
+      loadingFollowing: "Schritt 2 von 2: Prüfe die Personen, denen du folgst",
+      loadingFollowers: "Schritt 1 von 2: Lade deine Follower",
       paused: "Pausiert",
       pause: "Pause",
       resume: "Fortsetzen",
       cancel: "Abbrechen",
       ofTotal: "{current} von {total}",
-      ofUnknown: "Bisher {current}",
       scanCompletedToast: "{count} Nicht-Follower gefunden",
       scanFailed: "Scan fehlgeschlagen",
       retry: "Erneut versuchen",
@@ -267,6 +341,7 @@
       currently: "Aktuell",
       nextActionIn: "Nächste Aktion in {seconds}s",
       cooldownIn: "Abkühlung — {seconds}s",
+      scanPause: "Lange Pause — {seconds}s",
       idle: "Bereit",
       unfollowDoneTitle: "Fertig",
       unfollowDoneBody: "{ok} entfolgt, {fail} fehlgeschlagen",
@@ -307,23 +382,45 @@
       pillScanning: "Scannen {current}/{total}",
       pillUnfollowing: "Entfolgen {current}/{total}",
       pillResults: "{count} Nicht-Follower",
-      pillIdle: "Öffnen"
+      pillIdle: "Öffnen",
+      scanNotice: "Große Konten können etwas dauern. Unterbricht Instagram den Scan, bleibt dein Fortschritt gespeichert — warte kurz und setze dann fort, statt neu zu beginnen.",
+      countFollowers: "{current} Follower geladen",
+      countFollowing: "{current} Konten geprüft",
+      liveFound: "Bisher gefundene Nicht-Follower: {count}",
+      usersPerRequest: "Angefragte Nutzer pro Seite",
+      sessionExpired: "Instagram hat dich abgemeldet. Melde dich erneut an, füge das Skript erneut ein und setze fort — der Scan macht dort weiter, wo er aufgehört hat.",
+      scanBlocked: "Instagram lehnt Listenanfragen für dieses Konto vorübergehend ab. Warte ein paar Stunden und setze dann fort.",
+      networkError: "Die Verbindung wurde unterbrochen. Prüfe dein Netzwerk und setze fort.",
+      limitedList: "Instagram schränkt diese Liste gerade ein, daher können die Ergebnisse nicht bestätigt werden. Warte eine Weile und setze dann fort.",
+      blockedPaused: "Instagram hat diese Aktion vorerst blockiert. Automatisch pausiert — warte ein paar Stunden, bevor du fortsetzt, oder brich ab.",
+      keepTabVisible: "Lass diesen Tab im Vordergrund — Browser verlangsamen Hintergrund-Tabs stark.",
+      resumeScan: "Scan fortsetzen",
+      startOver: "Neu beginnen",
+      resumeHint: "Ein vorheriger Scan wurde unterbrochen. Setze ihn dort fort, statt neu zu beginnen.",
+      partialTitle: "Scan unterbrochen",
+      partialBody: "{loaded} der Konten, denen du folgst, wurden geprüft. Die Nicht-Follower unten sind bestätigt; setze fort, um den Rest zu prüfen.",
+      showLastScan: "Letztes Ergebnis zeigen ({count}, {age})",
+      lastScanNotice: "Diese Liste stammt aus einem Scan {age}. Scanne erneut für den aktuellen Stand.",
+      rescan: "Erneut scannen",
+      reasonStillFollowing: "Instagram hat geantwortet, aber du folgst diesem Konto noch",
+      reasonUnconfirmed: "Instagram hat geantwortet, aber das Entfolgen konnte nicht bestätigt werden",
+      reasonRejected: "Instagram hat die Anfrage abgelehnt",
+      reasonNetwork: "Verbindungsfehler"
     },
     fr: {
       title: "Instagram Unfollower",
       subtitle: "Voyez qui ne vous suit pas en retour",
       welcomeTitle: "Prêt quand vous l'êtes",
-      welcomeBody: "Nous analysons uniquement les personnes que vous suivez et utilisons le statut de suivi d'Instagram pour rester rapides. Rien n'est modifié sur votre compte pendant l'analyse.",
+      welcomeBody: "Vos abonnés sont chargés d'abord, puis chaque personne que vous suivez est comparée à eux. Rien n'est modifié sur votre compte pendant l'analyse.",
       scanBtn: "Analyser maintenant",
       scanning: "Analyse en cours",
-      loadingFollowing: "Chargement des personnes que vous suivez",
-      loadingFollowers: "Vérification du suivi en retour",
+      loadingFollowing: "Étape 2 sur 2 : vérification des personnes que vous suivez",
+      loadingFollowers: "Étape 1 sur 2 : chargement de vos abonnés",
       paused: "En pause",
       pause: "Pause",
       resume: "Reprendre",
       cancel: "Annuler",
       ofTotal: "{current} sur {total}",
-      ofUnknown: "{current} jusqu'à présent",
       scanCompletedToast: "{count} non-abonnés trouvés",
       scanFailed: "Échec de l'analyse",
       retry: "Réessayer",
@@ -356,6 +453,7 @@
       currently: "Actuellement",
       nextActionIn: "Prochaine action dans {seconds}s",
       cooldownIn: "Pause — {seconds}s",
+      scanPause: "Longue pause — {seconds}s",
       idle: "Prêt",
       unfollowDoneTitle: "Terminé",
       unfollowDoneBody: "{ok} désabonnés, {fail} échoués",
@@ -396,23 +494,45 @@
       pillScanning: "Analyse {current}/{total}",
       pillUnfollowing: "Désabonnement {current}/{total}",
       pillResults: "{count} non-abonnés",
-      pillIdle: "Ouvrir"
+      pillIdle: "Ouvrir",
+      scanNotice: "Les grands comptes peuvent prendre du temps. Si Instagram interrompt l'analyse, votre progression est enregistrée — patientez un peu puis reprenez au lieu de recommencer.",
+      countFollowers: "{current} abonnés chargés",
+      countFollowing: "{current} comptes vérifiés",
+      liveFound: "Non-abonnés trouvés jusqu'ici : {count}",
+      usersPerRequest: "Utilisateurs demandés par page",
+      sessionExpired: "Instagram vous a déconnecté. Reconnectez-vous, collez à nouveau le script et reprenez — l'analyse continue là où elle s'est arrêtée.",
+      scanBlocked: "Instagram refuse temporairement les requêtes de liste pour ce compte. Attendez quelques heures puis reprenez.",
+      networkError: "La connexion a été interrompue. Vérifiez votre réseau et reprenez.",
+      limitedList: "Instagram limite cette liste en ce moment, les résultats ne peuvent donc pas être confirmés. Patientez un moment puis reprenez.",
+      blockedPaused: "Instagram a bloqué cette action pour le moment. Mis en pause automatiquement — attendez quelques heures avant de reprendre, ou annulez.",
+      keepTabVisible: "Gardez cet onglet au premier plan — les navigateurs ralentissent fortement les onglets en arrière-plan.",
+      resumeScan: "Reprendre l'analyse",
+      startOver: "Recommencer",
+      resumeHint: "Une analyse précédente s'est arrêtée en cours de route. Reprenez-la au lieu de recommencer.",
+      partialTitle: "Analyse interrompue",
+      partialBody: "{loaded} des comptes que vous suivez ont été vérifiés. Les non-abonnés ci-dessous sont confirmés ; reprenez pour vérifier le reste.",
+      showLastScan: "Afficher le dernier résultat ({count}, {age})",
+      lastScanNotice: "Cette liste provient d'une analyse {age}. Relancez l'analyse pour l'état actuel.",
+      rescan: "Relancer",
+      reasonStillFollowing: "Instagram a répondu, mais vous suivez toujours ce compte",
+      reasonUnconfirmed: "Instagram a répondu, mais le désabonnement n'a pas pu être confirmé",
+      reasonRejected: "Instagram a refusé la requête",
+      reasonNetwork: "Erreur de connexion"
     },
     es: {
       title: "Instagram Unfollower",
       subtitle: "Mira quién no te sigue de vuelta",
       welcomeTitle: "Listo cuando tú lo estés",
-      welcomeBody: "Solo analizamos a las personas que sigues y usamos el estado de seguimiento de Instagram para que el análisis sea rápido. No se cambia nada en tu cuenta durante el análisis.",
+      welcomeBody: "Primero se cargan tus seguidores y luego se compara con ellos a cada persona que sigues. No se cambia nada en tu cuenta durante el análisis.",
       scanBtn: "Analizar ahora",
       scanning: "Analizando",
-      loadingFollowing: "Cargando a las personas que sigues",
-      loadingFollowers: "Comprobando el seguimiento de vuelta",
+      loadingFollowing: "Paso 2 de 2: comprobando a las personas que sigues",
+      loadingFollowers: "Paso 1 de 2: cargando tus seguidores",
       paused: "En pausa",
       pause: "Pausar",
       resume: "Reanudar",
       cancel: "Cancelar",
       ofTotal: "{current} de {total}",
-      ofUnknown: "{current} hasta ahora",
       scanCompletedToast: "{count} no seguidores encontrados",
       scanFailed: "Error en el análisis",
       retry: "Intentar de nuevo",
@@ -445,6 +565,7 @@
       currently: "Actualmente",
       nextActionIn: "Próxima acción en {seconds}s",
       cooldownIn: "Enfriamiento — {seconds}s",
+      scanPause: "Pausa larga — {seconds}s",
       idle: "Listo",
       unfollowDoneTitle: "Hecho",
       unfollowDoneBody: "{ok} dejados de seguir, {fail} fallidos",
@@ -485,7 +606,30 @@
       pillScanning: "Analizando {current}/{total}",
       pillUnfollowing: "Dejando de seguir {current}/{total}",
       pillResults: "{count} no seguidores",
-      pillIdle: "Abrir"
+      pillIdle: "Abrir",
+      scanNotice: "Las cuentas grandes pueden tardar. Si Instagram interrumpe el análisis, tu progreso se guarda — espera un poco y reanuda en lugar de empezar de nuevo.",
+      countFollowers: "{current} seguidores cargados",
+      countFollowing: "{current} cuentas comprobadas",
+      liveFound: "No seguidores encontrados hasta ahora: {count}",
+      usersPerRequest: "Usuarios solicitados por página",
+      sessionExpired: "Instagram cerró tu sesión. Vuelve a iniciar sesión, pega el script otra vez y reanuda — el análisis continúa donde se detuvo.",
+      scanBlocked: "Instagram rechaza temporalmente las solicitudes de listas para esta cuenta. Espera unas horas y luego reanuda.",
+      networkError: "Se perdió la conexión. Revisa tu red y reanuda.",
+      limitedList: "Instagram está limitando esta lista ahora mismo, así que los resultados no se pueden confirmar. Espera un rato y luego reanuda.",
+      blockedPaused: "Instagram bloqueó esta acción por ahora. Pausado automáticamente — espera unas horas antes de reanudar, o cancela.",
+      keepTabVisible: "Mantén esta pestaña en primer plano — los navegadores ralentizan mucho las pestañas en segundo plano.",
+      resumeScan: "Reanudar análisis",
+      startOver: "Empezar de nuevo",
+      resumeHint: "Un análisis anterior se detuvo a medias. Continúa desde ahí en lugar de empezar de nuevo.",
+      partialTitle: "Análisis interrumpido",
+      partialBody: "Se comprobaron {loaded} de las cuentas que sigues. Los no seguidores de abajo están confirmados; reanuda para comprobar el resto.",
+      showLastScan: "Ver el último resultado ({count}, {age})",
+      lastScanNotice: "Esta lista es de un análisis {age}. Vuelve a analizar para ver el estado actual.",
+      rescan: "Volver a analizar",
+      reasonStillFollowing: "Instagram respondió, pero sigues a esta cuenta",
+      reasonUnconfirmed: "Instagram respondió, pero no se pudo confirmar que dejaste de seguir",
+      reasonRejected: "Instagram rechazó la solicitud",
+      reasonNetwork: "Error de conexión"
     }
   };
 
@@ -509,18 +653,17 @@
     scanPaused: false,
     scanCancelled: false,
     unfollowPaused: false,
-    progress: { current: 0, total: 0, label: "scanning", note: "" },
+    unfollowCancelled: false,
+    progress: { current: 0, total: 0, label: "loadingFollowers", note: "" },
     waitUntil: 0,
     waitReason: "",
     users: [],
-    followingCount: 0,
-    followersCount: 0,
     selected: new Set(),
-    hidden: new Set(persisted.hidden || []),
+    hidden: new Set(Array.isArray(persisted.hidden) ? persisted.hidden.map(String) : []),
     log: [],
     search: "",
-    filters: persisted.filters || { verified: true, private: true, noAvatar: true, showHidden: false },
-    timings: { ...DEFAULT_TIMINGS, ...(persisted.timings || {}) },
+    filters: { verified: true, private: true, noAvatar: true, showHidden: false, ...(persisted.filters || {}) },
+    timings: loadTimings(persisted.timings),
     panelPos: persisted.panelPos || null,
     // Persisted panel size (user can resize from any edge/corner). Null = default.
     panelSize: (persisted.panelSize && Number.isFinite(persisted.panelSize.w) && Number.isFinite(persisted.panelSize.h)) ? persisted.panelSize : null,
@@ -528,42 +671,170 @@
     language: LANGS.includes(persisted.language) ? persisted.language : "en",
     // User preference: 'system' follows the OS; 'light'/'dark' force a theme.
     theme: persisted.theme === "light" || persisted.theme === "dark" ? persisted.theme : "system",
-    // Transient (not persisted): ids that failed during the last unfollow run.
-    failed: new Set(),
     // Transient: which quick-select shortcut is active ('all'|'verified'|'private'|'no-photo'|null).
     // While one is active, the others are disabled and it acts as a "clear" toggle.
     selectMode: null,
-    // Set true once a permanent rate-limit auto-pauses the current operation.
-    rateLimited: false,
+    // i18n key of the warning shown while an unfollow run is auto-paused because
+    // Instagram pushed back ("rateLimitPaused" | "blockedPaused"), else "".
+    pauseReason: "",
+    // A saved, unfinished scan (see createCheckpoint), or null.
+    checkpoint: loadCheckpoint(),
+    // True when the results come from a scan that stopped partway.
+    partial: false,
+    // Set when the results are a cached earlier scan rather than a fresh one.
+    staleNotice: "",
     error: ""
   };
 
   let countdownTimer = null;
   let toastTimer = null;
+  // Set once the panel is closed: every running loop checks it and stops, so a
+  // closed panel never keeps scanning or unfollowing in the background.
+  let destroyed = false;
+  let activeRequest = null;
+  let sessionTokens = null;
 
-  function loadStored() {
+  function readJSON(key) {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
     } catch {
-      return {};
+      return null;
     }
   }
 
-  function persist() {
+  function writeJSON(key, value) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        hidden: [...state.hidden],
-        timings: state.timings,
-        filters: state.filters,
-        panelPos: state.panelPos,
-        panelSize: state.panelSize,
-        minimized: state.minimized,
-        language: state.language,
-        theme: state.theme
-      }));
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
     } catch {
-      /* storage may be disabled; ignore */
+      /* storage may be disabled or full; ignore */
+      return false;
+    }
+  }
+
+  function removeKey(key) {
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
+  }
+
+  function loadStored() {
+    const current = readJSON(STORAGE_KEY);
+    if (current && typeof current === "object") return current;
+    const legacy = readJSON(LEGACY_STORAGE_KEY);
+    return legacy && typeof legacy === "object" ? legacy : {};
+  }
+
+  // Merge saved timings over the defaults, dropping anything that isn't a sane
+  // non-negative number (a hand-edited or corrupted value must never turn into
+  // a zero delay or a NaN sleep).
+  function loadTimings(saved) {
+    const timings = { ...DEFAULT_TIMINGS };
+    for (const key of Object.keys(timings)) {
+      const value = saved?.[key];
+      if (Number.isFinite(value) && value >= 0) timings[key] = value;
+    }
+    timings.usersPerRequest = clamp(Math.round(timings.usersPerRequest) || DEFAULT_TIMINGS.usersPerRequest, 1, MAX_USERS_PER_REQUEST);
+    return timings;
+  }
+
+  function persist() {
+    writeJSON(STORAGE_KEY, {
+      hidden: [...state.hidden],
+      timings: state.timings,
+      filters: state.filters,
+      panelPos: state.panelPos,
+      panelSize: state.panelSize,
+      minimized: state.minimized,
+      language: state.language,
+      theme: state.theme
+    });
+  }
+
+  // --- Scan checkpoint (resume after an interruption) ------------------------
+  // Both lists are paged with a cursor; after every page we save what we have
+  // plus the next cursor, so a rate limit, sign-out or closed tab costs nothing.
+  function createCheckpoint(viewerId) {
+    return {
+      viewerId: String(viewerId),
+      savedAt: Date.now(),
+      followerIds: [],
+      followerNames: [],
+      followersCursor: "",
+      followersDone: false,
+      following: [],
+      followingCursor: "",
+      followingDone: false,
+      stopReason: ""
+    };
+  }
+
+  function loadCheckpoint() {
+    const saved = readJSON(CHECKPOINT_KEY);
+    if (!saved || typeof saved !== "object" || !saved.viewerId) return null;
+    if (!Array.isArray(saved.followerIds) || !Array.isArray(saved.following)) return null;
+    if (Date.now() - Number(saved.savedAt || 0) > SAVED_SCAN_TTL) return null;
+    if (saved.followersDone && saved.followingDone) return null;
+    if (!saved.followerIds.length && !saved.following.length) return null;
+    if (String(saved.viewerId) !== String(getCookie("ds_user_id"))) return null;
+    return { ...createCheckpoint(saved.viewerId), ...saved };
+  }
+
+  function saveCheckpoint(checkpoint) {
+    if (!checkpoint) return;
+    checkpoint.savedAt = Date.now();
+    writeJSON(CHECKPOINT_KEY, checkpoint);
+  }
+
+  function clearCheckpoint() {
+    state.checkpoint = null;
+    state.partial = false;
+    removeKey(CHECKPOINT_KEY);
+  }
+
+  // --- Last completed scan (shown again without rescanning) -----------------
+  function saveLastScan(savedAt = Date.now()) {
+    writeJSON(LAST_SCAN_KEY, {
+      viewerId: getCookie("ds_user_id"),
+      savedAt,
+      users: state.users.filter((u) => !u.follows_viewer)
+    });
+  }
+
+  function loadLastScan() {
+    const saved = readJSON(LAST_SCAN_KEY);
+    if (!saved || !Array.isArray(saved.users) || !saved.viewerId) return null;
+    if (String(saved.viewerId) !== String(getCookie("ds_user_id"))) return null;
+    if (Date.now() - Number(saved.savedAt || 0) > SAVED_SCAN_TTL) return null;
+    return saved;
+  }
+
+  function showLastScan() {
+    const saved = loadLastScan();
+    if (!saved) return renderBody();
+    state.users = saved.users.map((user) => ({ ...user, follows_viewer: false }));
+    state.selected.clear();
+    state.selectMode = null;
+    state.partial = false;
+    state.staleNotice = t("lastScanNotice", { age: timeAgo(saved.savedAt) });
+    state.mode = "results";
+    renderBody();
+  }
+
+  function timeAgo(timestamp) {
+    const minutes = Math.max(1, Math.round((Date.now() - Number(timestamp)) / 60000));
+    try {
+      const format = new Intl.RelativeTimeFormat(state.language, { numeric: "auto" });
+      return minutes < 60 ? format.format(-minutes, "minute") : format.format(-Math.round(minutes / 60), "hour");
+    } catch {
+      return minutes < 60 ? `${minutes} min` : `${Math.round(minutes / 60)} h`;
+    }
+  }
+
+  function formatCount(value) {
+    try {
+      return (Number(value) || 0).toLocaleString(state.language);
+    } catch {
+      return String(Number(value) || 0);
     }
   }
 
@@ -575,8 +846,8 @@
   }
 
   function cleanupExisting() {
-    if (typeof window.__iuCleanup === "function") {
-      try { window.__iuCleanup(); } catch { /* ignore */ }
+    if (typeof window.__ucCleanup === "function") {
+      try { window.__ucCleanup(); } catch { /* ignore */ }
     }
     document.getElementById(APP_ID)?.remove();
     document.getElementById(STYLE_ID)?.remove();
@@ -593,21 +864,43 @@
     const root = document.createElement("div");
     root.id = APP_ID;
     document.body.appendChild(root);
-    window.__iuCleanup = unmount;
+    window.__ucCleanup = unmount;
     prefersDark.addEventListener("change", onSystemThemeChange);
     window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     renderShell();
     applyTheme();
   }
 
   function unmount() {
+    if (destroyed) return;
+    destroyed = true;
+    // Stop any running scan/unfollow loop and the request in flight.
+    state.scanCancelled = true;
+    state.unfollowCancelled = true;
+    state.scanPaused = false;
+    state.unfollowPaused = false;
+    activeRequest?.abort();
     stopCountdown();
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
     prefersDark.removeEventListener("change", onSystemThemeChange);
     window.removeEventListener("beforeunload", onBeforeUnload);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
     document.getElementById(APP_ID)?.remove();
     document.getElementById(STYLE_ID)?.remove();
-    if (window.__iuCleanup === unmount) window.__iuCleanup = null;
+    if (window.__ucCleanup === unmount) window.__ucCleanup = null;
+  }
+
+  // Browsers heavily throttle timers in background tabs, so a scan in a hidden
+  // tab crawls. Surface that instead of looking stuck.
+  function visibilityNote() {
+    return document.hidden ? t("keepTabVisible") : "";
+  }
+
+  function onVisibilityChange() {
+    if (state.mode !== "scanning") return;
+    state.progress.note = visibilityNote();
+    updateProgressDOM();
   }
 
   // Warn before leaving while a scan/unfollow is running — closing the tab or
@@ -625,8 +918,8 @@
     if (!root) return;
     if (state.minimized) {
       root.innerHTML = `
-        <button class="iu-pill" data-action="expand" type="button" aria-label="${escapeAttr(t("expand"))}">
-          <span class="iu-pill-dot ${pillStateClass()}"></span>
+        <button class="uc-pill" data-action="expand" type="button" aria-label="${escapeAttr(t("expand"))}">
+          <span class="uc-pill-dot ${pillStateClass()}"></span>
           <span data-pill-label>${escapeHTML(pillLabel())}</span>
         </button>
       `;
@@ -636,16 +929,16 @@
       return;
     }
     root.innerHTML = `
-      <section class="iu-panel" role="dialog" aria-label="${escapeAttr(t("title"))}">
-        <header class="iu-header" data-drag>
-          <div class="iu-brand">
-            <span class="iu-brand-dot"></span>
-            <div class="iu-brand-text">
+      <section class="uc-panel" role="dialog" aria-label="${escapeAttr(t("title"))}">
+        <header class="uc-header" data-drag>
+          <div class="uc-brand">
+            <span class="uc-brand-dot"></span>
+            <div class="uc-brand-text">
               <strong>${escapeHTML(t("title"))}</strong>
               <span data-subtitle>${escapeHTML(t("subtitle"))}</span>
             </div>
           </div>
-          <div class="iu-header-actions">
+          <div class="uc-header-actions">
             <button type="button" data-action="settings" aria-label="${escapeAttr(t("settings"))}" title="${escapeAttr(t("settings"))}">${SVG.gear}</button>
             <button type="button" data-action="theme" aria-label="${escapeAttr(t("theme"))}" title="${escapeAttr(t(themeTitleKey()))}">${themeIcon()}</button>
             <button type="button" data-action="language" aria-label="${escapeAttr(t("language"))}" title="${escapeAttr(t("language"))}"><span data-lang>${escapeHTML(state.language.toUpperCase())}</span></button>
@@ -653,20 +946,20 @@
             <button type="button" data-action="close" aria-label="${escapeAttr(t("close"))}" title="${escapeAttr(t("close"))}">${SVG.close}</button>
           </div>
         </header>
-        <div class="iu-body" data-body></div>
-        <div class="iu-resize iu-resize--n" data-resize="n"></div>
-        <div class="iu-resize iu-resize--s" data-resize="s"></div>
-        <div class="iu-resize iu-resize--e" data-resize="e"></div>
-        <div class="iu-resize iu-resize--w" data-resize="w"></div>
-        <div class="iu-resize iu-resize--ne" data-resize="ne"></div>
-        <div class="iu-resize iu-resize--nw" data-resize="nw"></div>
-        <div class="iu-resize iu-resize--se" data-resize="se"></div>
-        <div class="iu-resize iu-resize--sw" data-resize="sw"></div>
+        <div class="uc-body" data-body></div>
+        <div class="uc-resize uc-resize--n" data-resize="n"></div>
+        <div class="uc-resize uc-resize--s" data-resize="s"></div>
+        <div class="uc-resize uc-resize--e" data-resize="e"></div>
+        <div class="uc-resize uc-resize--w" data-resize="w"></div>
+        <div class="uc-resize uc-resize--ne" data-resize="ne"></div>
+        <div class="uc-resize uc-resize--nw" data-resize="nw"></div>
+        <div class="uc-resize uc-resize--se" data-resize="se"></div>
+        <div class="uc-resize uc-resize--sw" data-resize="sw"></div>
       </section>
     `;
     bindHeader(root);
     bindDrag(root.querySelector("[data-drag]"));
-    bindResize(root.querySelector(".iu-panel"));
+    bindResize(root.querySelector(".uc-panel"));
     applyPanelPosition();
     applyTheme();
     renderBody();
@@ -690,7 +983,7 @@
 
   // Apply the persisted panel size: width always, height only for list views.
   function applyPanelSize() {
-    const node = document.querySelector(`#${APP_ID} .iu-panel`);
+    const node = document.querySelector(`#${APP_ID} .uc-panel`);
     if (!node) return;
     if (state.panelSize) {
       const maxW = Math.max(PANEL_MIN_WIDTH, window.innerWidth - 16);
@@ -709,9 +1002,9 @@
   function applyPanelPosition() {
     const root = document.getElementById(APP_ID);
     if (!root) return;
-    const node = root.querySelector(".iu-panel") || root.querySelector(".iu-pill");
+    const node = root.querySelector(".uc-panel") || root.querySelector(".uc-pill");
     if (!node) return;
-    if (node.classList.contains("iu-panel")) applyPanelSize();
+    if (node.classList.contains("uc-panel")) applyPanelSize();
     const pos = state.panelPos;
     if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
       const max = panelBounds(node);
@@ -737,7 +1030,7 @@
 
   function bindDrag(handle) {
     if (!handle) return;
-    const panel = handle.closest(".iu-panel");
+    const panel = handle.closest(".uc-panel");
     if (!panel) return;
     let startX = 0;
     let startY = 0;
@@ -758,7 +1051,7 @@
       panel.style.right = "auto";
       panel.style.bottom = "auto";
       handle.setPointerCapture(event.pointerId);
-      handle.classList.add("iu-dragging");
+      handle.classList.add("uc-dragging");
     });
 
     handle.addEventListener("pointermove", (event) => {
@@ -774,7 +1067,7 @@
       if (!dragging) return;
       dragging = false;
       handle.releasePointerCapture?.(event.pointerId);
-      handle.classList.remove("iu-dragging");
+      handle.classList.remove("uc-dragging");
       const rect = panel.getBoundingClientRect();
       state.panelPos = { x: rect.left, y: rect.top };
       persist();
@@ -807,7 +1100,7 @@
         panel.style.maxWidth = "none";
         panel.style.maxHeight = "none";
         handle.setPointerCapture(event.pointerId);
-        panel.classList.add("iu-resizing");
+        panel.classList.add("uc-resizing");
       });
 
       handle.addEventListener("pointermove", (event) => {
@@ -839,7 +1132,7 @@
         if (!resizing) return;
         resizing = false;
         handle.releasePointerCapture?.(event.pointerId);
-        panel.classList.remove("iu-resizing");
+        panel.classList.remove("uc-resizing");
         const rect = panel.getBoundingClientRect();
         state.panelSize = { w: Math.round(rect.width), h: Math.round(rect.height) };
         state.panelPos = { x: rect.left, y: rect.top };
@@ -858,20 +1151,23 @@
 
   function pillLabel() {
     if (state.mode === "scanning") {
-      return t("pillScanning", { current: state.progress.current, total: state.progress.total || "?" });
+      return t("pillScanning", {
+        current: formatCount(state.progress.current),
+        total: state.progress.total ? formatCount(state.progress.total) : "?"
+      });
     }
     if (state.mode === "unfollowing") {
       return t("pillUnfollowing", { current: state.progress.current, total: state.progress.total });
     }
     if (state.mode === "results" && state.users.length) {
-      return t("pillResults", { count: state.users.filter((u) => !u.follows_viewer && !state.hidden.has(u.id)).length });
+      return t("pillResults", { count: nonFollowers().length });
     }
     return t("pillIdle");
   }
 
   function pillStateClass() {
-    if (state.mode === "scanning" || state.mode === "unfollowing") return "iu-pill-dot--active";
-    if (state.error) return "iu-pill-dot--error";
+    if (state.mode === "scanning" || state.mode === "unfollowing") return "uc-pill-dot--active";
+    if (state.error) return "uc-pill-dot--error";
     return "";
   }
 
@@ -898,50 +1194,96 @@
   }
 
   function renderIdleView() {
+    const checkpoint = state.checkpoint;
+    const resumeActions = checkpoint ? `
+      <div class="uc-welcome-actions">
+        <button type="button" class="uc-btn uc-btn--primary uc-btn--lg" data-action="resume-scan">${escapeHTML(t("resumeScan"))}</button>
+        <button type="button" class="uc-btn uc-btn--ghost" data-action="restart-scan">${escapeHTML(t("startOver"))}</button>
+      </div>` : "";
     if (state.error) {
       return `
-        <div class="iu-welcome">
-          <div class="iu-welcome-icon iu-welcome-icon--error">${SVG.alert}</div>
+        <div class="uc-welcome">
+          <div class="uc-welcome-icon uc-welcome-icon--error">${SVG.alert}</div>
           <h2>${escapeHTML(t("scanFailed"))}</h2>
           <p>${escapeHTML(state.error)}</p>
-          <button type="button" class="iu-btn iu-btn--primary" data-action="scan">${escapeHTML(t("retry"))}</button>
+          ${checkpoint ? resumeActions : `<button type="button" class="uc-btn uc-btn--primary" data-action="scan">${escapeHTML(t("retry"))}</button>`}
         </div>
       `;
     }
+    if (checkpoint) {
+      return `
+        <div class="uc-welcome">
+          <div class="uc-welcome-icon">${SVG.sparkle}</div>
+          <h2>${escapeHTML(t("welcomeTitle"))}</h2>
+          <p>${escapeHTML(t("resumeHint"))}</p>
+          ${checkpoint.stopReason ? `<p>${escapeHTML(checkpoint.stopReason)}</p>` : ""}
+          ${resumeActions}
+        </div>
+      `;
+    }
+    const last = loadLastScan();
     return `
-      <div class="iu-welcome">
-        <div class="iu-welcome-icon">${SVG.sparkle}</div>
+      <div class="uc-welcome">
+        <div class="uc-welcome-icon">${SVG.sparkle}</div>
         <h2>${escapeHTML(t("welcomeTitle"))}</h2>
         <p>${escapeHTML(t("welcomeBody"))}</p>
-        <button type="button" class="iu-btn iu-btn--primary iu-btn--lg" data-action="scan">${escapeHTML(t("scanBtn"))}</button>
+        <p class="uc-welcome-note">${escapeHTML(t("scanNotice"))}</p>
+        <div class="uc-welcome-actions">
+          <button type="button" class="uc-btn uc-btn--primary uc-btn--lg" data-action="scan">${escapeHTML(t("scanBtn"))}</button>
+          ${last ? `<button type="button" class="uc-btn uc-btn--ghost" data-action="show-last">${escapeHTML(t("showLastScan", { count: formatCount(last.users.length), age: timeAgo(last.savedAt) }))}</button>` : ""}
+        </div>
       </div>
     `;
   }
 
   function bindIdle(body) {
-    body.querySelector("[data-action='scan']")?.addEventListener("click", startScan);
+    body.querySelector("[data-action='scan']")?.addEventListener("click", () => startScan());
+    body.querySelector("[data-action='show-last']")?.addEventListener("click", showLastScan);
+    bindScanResume(body);
+  }
+
+  function bindScanResume(body) {
+    body.querySelector("[data-action='resume-scan']")?.addEventListener("click", () => startScan({ resume: true }));
+    body.querySelector("[data-action='restart-scan']")?.addEventListener("click", () => {
+      clearCheckpoint();
+      startScan();
+    });
+  }
+
+  // "1,234 followers loaded" / "1,234 of 2,000" depending on what we know.
+  function progressCounter() {
+    const { current, total, label } = state.progress;
+    if (total) return t("ofTotal", { current: formatCount(current), total: formatCount(total) });
+    return t(label === "loadingFollowing" ? "countFollowing" : "countFollowers", { current: formatCount(current) });
+  }
+
+  // While the following list loads, non-followers can already be counted
+  // (the follower list is complete by then).
+  function liveFoundLabel() {
+    if (state.progress.label !== "loadingFollowing") return "";
+    return t("liveFound", { count: formatCount(nonFollowers().length) });
   }
 
   function renderScanView() {
     const { current, total, label, note } = state.progress;
     const percent = total ? Math.min(100, Math.round((current / total) * 100)) : 0;
-    const counter = total ? t("ofTotal", { current, total }) : t("ofUnknown", { current });
+    const live = liveFoundLabel();
     return `
-      <div class="iu-progress">
-        <div class="iu-progress-head">
+      <div class="uc-progress">
+        <div class="uc-progress-head">
           <h2 data-progress-label>${escapeHTML(state.scanPaused ? t("paused") : t(label))}</h2>
           <p data-progress-note>${escapeHTML(note)}</p>
         </div>
-        <div class="iu-bar"><span data-progress-bar style="width:${percent}%"></span></div>
-        <div class="iu-progress-meta">
-          <span data-progress-counter>${escapeHTML(counter)}</span>
-          <span data-countdown class="iu-muted"></span>
+        <div class="uc-bar${total ? "" : " uc-bar--indeterminate"}" data-bar><span data-progress-bar style="width:${percent}%"></span></div>
+        <div class="uc-progress-meta">
+          <span data-progress-counter>${escapeHTML(progressCounter())}</span>
+          <span data-countdown class="uc-muted"></span>
         </div>
-        ${state.rateLimited ? `<div class="iu-warn">${escapeHTML(t("rateLimitPaused"))}</div>` : ""}
-        <div class="iu-warn iu-warn--soft">${escapeHTML(t("keepTabOpen"))}</div>
-        <div class="iu-progress-actions">
-          <button type="button" class="iu-btn" data-action="pause-scan">${escapeHTML(t(state.scanPaused ? "resume" : "pause"))}</button>
-          <button type="button" class="iu-btn iu-btn--ghost" data-action="cancel-scan">${escapeHTML(t("cancel"))}</button>
+        <div class="uc-live" data-live-found ${live ? "" : "hidden"}>${escapeHTML(live)}</div>
+        <div class="uc-warn uc-warn--soft">${escapeHTML(t("keepTabOpen"))}</div>
+        <div class="uc-progress-actions">
+          <button type="button" class="uc-btn" data-action="pause-scan">${escapeHTML(t(state.scanPaused ? "resume" : "pause"))}</button>
+          <button type="button" class="uc-btn uc-btn--ghost" data-action="cancel-scan">${escapeHTML(t("cancel"))}</button>
         </div>
       </div>
     `;
@@ -958,12 +1300,13 @@
     body.querySelector("[data-action='cancel-scan']")?.addEventListener("click", () => {
       state.scanCancelled = true;
       state.scanPaused = false;
+      activeRequest?.abort();
     });
   }
 
   function renderResultsView() {
     const display = getDisplayUsers();
-    const totalNonFollowers = state.users.filter((u) => !u.follows_viewer && !state.hidden.has(u.id)).length;
+    const totalNonFollowers = nonFollowers().length;
     let summary;
     if (totalNonFollowers === 0) summary = t("foundNone");
     else if (totalNonFollowers === 1) summary = t("foundOne");
@@ -974,11 +1317,12 @@
     const pool = getPool();
 
     return `
-      <div class="iu-results">
-        <div class="iu-results-summary">${escapeHTML(summary)}</div>
-        <div class="iu-search-row">
+      <div class="uc-results">
+        ${renderResultsNotice()}
+        <div class="uc-results-summary">${escapeHTML(summary)}</div>
+        <div class="uc-search-row">
           <input
-            class="iu-search"
+            class="uc-search"
             type="search"
             data-search
             placeholder="${escapeAttr(t("search"))}"
@@ -987,25 +1331,53 @@
             spellcheck="false"
           >
         </div>
-        <div class="iu-filters">
+        <div class="uc-filters">
           ${filterChip("verified", t("filterVerified"), pool.some((u) => u.is_verified))}
           ${filterChip("private", t("filterPrivate"), pool.some((u) => u.is_private))}
           ${filterChip("noAvatar", t("filterNoAvatar"), pool.some((u) => isDefaultAvatar(u)))}
           ${filterChip("showHidden", t("filterShowHidden"), state.hidden.size > 0 || state.filters.showHidden)}
         </div>
-        <div class="iu-list" data-list>${renderUserList(display)}</div>
-        <div class="iu-actionbar">
-          <div class="iu-actionbar-left">
-            <span class="iu-select-group" data-select-group>${renderSelectButtons()}</span>
-            <span class="iu-muted" data-selected-label>${escapeHTML(t("selectedCount", { count: state.selected.size }))}</span>
+        <div class="uc-list" data-list>${renderUserList(display)}</div>
+        <div class="uc-actionbar">
+          <div class="uc-actionbar-left">
+            <span class="uc-select-group" data-select-group>${renderSelectButtons()}</span>
+            <span class="uc-muted" data-selected-label>${escapeHTML(t("selectedCount", { count: state.selected.size }))}</span>
           </div>
-          <div class="iu-actionbar-right">
-            <button type="button" class="iu-btn iu-btn--small" data-action="copy" ${display.length ? "" : "disabled"}>${escapeHTML(state.selected.size ? t("copy") : t("copyAll"))}</button>
-            <button type="button" class="iu-btn iu-btn--danger iu-btn--small" data-action="unfollow" ${state.selected.size ? "" : "disabled"}>${escapeHTML(t("unfollow"))}${state.selected.size ? " (" + state.selected.size + ")" : ""}</button>
+          <div class="uc-actionbar-right">
+            <button type="button" class="uc-btn uc-btn--small" data-action="copy" ${display.length ? "" : "disabled"}>${escapeHTML(state.selected.size ? t("copy") : t("copyAll"))}</button>
+            <button type="button" class="uc-btn uc-btn--danger uc-btn--small" data-action="unfollow" ${state.selected.size ? "" : "disabled"}>${escapeHTML(t("unfollow"))}${state.selected.size ? " (" + state.selected.size + ")" : ""}</button>
           </div>
         </div>
       </div>
     `;
+  }
+
+  // A banner above the results when they're not a fresh, complete scan: either
+  // the scan stopped partway (offer to resume) or the list is a cached one.
+  function renderResultsNotice() {
+    const checkpoint = state.checkpoint;
+    if (state.partial && checkpoint) {
+      return `
+        <div class="uc-notice" role="status">
+          <strong>${escapeHTML(t("partialTitle"))}</strong>
+          <p>${escapeHTML(t("partialBody", { loaded: formatCount(checkpoint.following.length) }))}</p>
+          ${checkpoint.stopReason ? `<p class="uc-notice-reason">${escapeHTML(checkpoint.stopReason)}</p>` : ""}
+          <div class="uc-notice-actions">
+            <button type="button" class="uc-btn uc-btn--primary uc-btn--small" data-action="resume-scan">${escapeHTML(t("resumeScan"))}</button>
+            <button type="button" class="uc-btn uc-btn--ghost uc-btn--small" data-action="restart-scan">${escapeHTML(t("startOver"))}</button>
+          </div>
+        </div>`;
+    }
+    if (state.staleNotice) {
+      return `
+        <div class="uc-notice" role="status">
+          <p>${escapeHTML(state.staleNotice)}</p>
+          <div class="uc-notice-actions">
+            <button type="button" class="uc-btn uc-btn--small" data-action="scan">${escapeHTML(t("rescan"))}</button>
+          </div>
+        </div>`;
+    }
+    return "";
   }
 
   // The quick-select buttons (Select all / verified / private / no-photo). They
@@ -1028,8 +1400,8 @@
       .map((d) => {
         const isActive = active === d.mode;
         const disabled = active && !isActive;
-        const ghost = d.mode === "all" ? "" : " iu-btn--ghost";
-        return `<button type="button" class="iu-btn iu-btn--small${ghost}" data-action="${d.action}"${disabled ? " disabled" : ""}>${escapeHTML(isActive ? t("selectNone") : t(d.label))}</button>`;
+        const ghost = d.mode === "all" ? "" : " uc-btn--ghost";
+        return `<button type="button" class="uc-btn uc-btn--small${ghost}" data-action="${d.action}"${disabled ? " disabled" : ""}>${escapeHTML(isActive ? t("selectNone") : t(d.label))}</button>`;
       })
       .join("");
   }
@@ -1076,8 +1448,8 @@
     if (!visible) return "";
     const active = state.filters[key];
     return `
-      <button type="button" class="iu-chip ${active ? "iu-chip--on" : ""}" data-filter="${escapeAttr(key)}" aria-pressed="${active ? "true" : "false"}">
-        <span class="iu-chip-tick">${active ? SVG.check : ""}</span>
+      <button type="button" class="uc-chip ${active ? "uc-chip--on" : ""}" data-filter="${escapeAttr(key)}" aria-pressed="${active ? "true" : "false"}">
+        <span class="uc-chip-tick">${active ? SVG.check : ""}</span>
         ${escapeHTML(label)}
       </button>
     `;
@@ -1085,7 +1457,7 @@
 
   function renderUserList(display) {
     if (!display.length) {
-      return `<div class="iu-list-empty">${escapeHTML(t("noMatches"))}</div>`;
+      return `<div class="uc-list-empty">${escapeHTML(t("noMatches"))}</div>`;
     }
     return display.map(renderUserRow).join("");
   }
@@ -1094,22 +1466,22 @@
     const hidden = state.hidden.has(user.id);
     const checked = state.selected.has(user.id);
     const tags = [];
-    if (user.is_verified) tags.push(`<span class="iu-tag iu-tag--brand">${escapeHTML(t("filterVerified"))}</span>`);
-    if (user.is_private) tags.push(`<span class="iu-tag">${escapeHTML(t("filterPrivate"))}</span>`);
+    if (user.is_verified) tags.push(`<span class="uc-tag uc-tag--brand">${escapeHTML(t("filterVerified"))}</span>`);
+    if (user.is_private) tags.push(`<span class="uc-tag">${escapeHTML(t("filterPrivate"))}</span>`);
     return `
-      <div class="iu-row ${hidden ? "iu-row--hidden" : ""} ${checked ? "iu-row--selected" : ""}" data-row="${escapeAttr(user.id)}" role="button" tabindex="0">
-        <input type="checkbox" class="iu-row-check" data-select="${escapeAttr(user.id)}" ${checked ? "checked" : ""} aria-label="${escapeAttr(user.username)}">
-        <img class="iu-avatar" src="${escapeAttr(user.profile_pic_url || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
-        <div class="iu-row-text">
-          <div class="iu-row-name">
+      <div class="uc-row ${hidden ? "uc-row--hidden" : ""} ${checked ? "uc-row--selected" : ""}" data-row="${escapeAttr(user.id)}" role="button" tabindex="0">
+        <input type="checkbox" class="uc-row-check" data-select="${escapeAttr(user.id)}" ${checked ? "checked" : ""} aria-label="${escapeAttr(user.username)}">
+        <img class="uc-avatar" src="${escapeAttr(user.profile_pic_url || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+        <div class="uc-row-text">
+          <div class="uc-row-name">
             <a href="/${encodeURIComponent(user.username)}/" target="_blank" rel="noopener noreferrer" data-stop>@${escapeHTML(user.username)}</a>
             ${tags.join(" ")}
           </div>
-          <div class="iu-row-sub">${escapeHTML(user.full_name || "")}</div>
+          <div class="uc-row-sub">${escapeHTML(user.full_name || "")}</div>
         </div>
-        <div class="iu-row-actions">
-          <a class="iu-icon-btn" href="/${encodeURIComponent(user.username)}/" target="_blank" rel="noopener noreferrer" data-stop title="${escapeAttr(t("openProfile"))}" aria-label="${escapeAttr(t("openProfile"))}">${SVG.open}</a>
-          <button type="button" class="iu-icon-btn iu-text-btn" data-hide="${escapeAttr(user.id)}" data-stop title="${escapeAttr(hidden ? t("unhideTooltip") : t("hideTooltip"))}">${escapeHTML(hidden ? t("unhide") : t("hide"))}</button>
+        <div class="uc-row-actions">
+          <a class="uc-icon-btn" href="/${encodeURIComponent(user.username)}/" target="_blank" rel="noopener noreferrer" data-stop title="${escapeAttr(t("openProfile"))}" aria-label="${escapeAttr(t("openProfile"))}">${SVG.open}</a>
+          <button type="button" class="uc-icon-btn uc-text-btn" data-hide="${escapeAttr(user.id)}" data-stop title="${escapeAttr(hidden ? t("unhideTooltip") : t("hideTooltip"))}">${escapeHTML(hidden ? t("unhide") : t("hide"))}</button>
         </div>
       </div>
     `;
@@ -1143,6 +1515,22 @@
       });
     });
 
+    bindRows(body);
+    bindSelectButtons(body);
+
+    body.querySelector("[data-action='copy']")?.addEventListener("click", copyUsernames);
+    body.querySelector("[data-action='unfollow']")?.addEventListener("click", confirmUnfollow);
+    body.querySelector("[data-action='scan']")?.addEventListener("click", () => startScan());
+    bindScanResume(body);
+  }
+
+  // Row interactions are delegated to the body element, which survives every
+  // renderBody() (only its innerHTML changes). Bind them once per body, or each
+  // re-render stacks another listener and a single click toggles a row twice.
+  function bindRows(body) {
+    if (body.ucRowsBound) return;
+    body.ucRowsBound = true;
+
     body.addEventListener("change", (event) => {
       const checkbox = event.target.closest("[data-select]");
       if (!checkbox) return;
@@ -1153,7 +1541,7 @@
       // re-render so the disabled buttons come back.
       if (state.selectMode) { state.selectMode = null; renderBody(); return; }
       const row = checkbox.closest("[data-row]");
-      if (row) row.classList.toggle("iu-row--selected", checkbox.checked);
+      if (row) row.classList.toggle("uc-row--selected", checkbox.checked);
       updateSelectedLabel(body);
     });
 
@@ -1175,7 +1563,7 @@
         return;
       }
       const row = event.target.closest("[data-row]");
-      if (!row || event.target.closest(".iu-row-check")) return;
+      if (!row || event.target.closest(".uc-row-check")) return;
       const id = row.getAttribute("data-row");
       const checkbox = row.querySelector("[data-select]");
       if (!checkbox) return;
@@ -1187,7 +1575,7 @@
         checkbox.checked = true;
       }
       if (state.selectMode) { state.selectMode = null; renderBody(); return; }
-      row.classList.toggle("iu-row--selected", checkbox.checked);
+      row.classList.toggle("uc-row--selected", checkbox.checked);
       updateSelectedLabel(body);
     });
 
@@ -1198,11 +1586,6 @@
       event.preventDefault();
       row.click();
     });
-
-    bindSelectButtons(body);
-
-    body.querySelector("[data-action='copy']")?.addEventListener("click", copyUsernames);
-    body.querySelector("[data-action='unfollow']")?.addEventListener("click", confirmUnfollow);
   }
 
   function updateSelectedLabel(body) {
@@ -1224,56 +1607,56 @@
     const done = state.progress.current;
     const percent = total ? Math.round((done / total) * 100) : 0;
     const isDone = state.mode === "unfollowDone";
-    const removed = state.log.filter((e) => e.ok).map((e) => e.user);
-    const failed = state.log.filter((e) => !e.ok).map((e) => e.user);
+    const removed = state.log.filter((e) => e.ok);
+    const failed = state.log.filter((e) => !e.ok);
     const last = state.log[state.log.length - 1];
     const summary = isDone
       ? t("unfollowDoneBody", { ok: removed.length, fail: failed.length })
       : t("ofTotal", { current: done, total });
 
-    // The done state lists exactly who was unfollowed (and who failed) in a
-    // scrollable area that fills the panel, so there's no dead space and the
-    // user can review the outcome. The in-progress state shows the live row.
+    // The done state lists exactly who was unfollowed (and who failed, with the
+    // reason) in a scrollable area, so the user can review the outcome. The
+    // in-progress state shows the live row.
     const resultList = isDone
       ? `
-        <div class="iu-done-list">
+        <div class="uc-done-list">
           ${removed.length ? `
-            <div class="iu-done-section">${escapeHTML(t("doneRemoved", { count: removed.length }))}</div>
-            ${removed.map((u) => doneRow(u, true)).join("")}
+            <div class="uc-done-section">${escapeHTML(t("doneRemoved", { count: removed.length }))}</div>
+            ${removed.map(doneRow).join("")}
           ` : ""}
           ${failed.length ? `
-            <div class="iu-done-section">${escapeHTML(t("doneFailed", { count: failed.length }))}</div>
-            ${failed.map((u) => doneRow(u, false)).join("")}
+            <div class="uc-done-section">${escapeHTML(t("doneFailed", { count: failed.length }))}</div>
+            ${failed.map(doneRow).join("")}
           ` : ""}
         </div>`
       : (last ? `
-          <div class="iu-current">
-            <span class="iu-muted">${escapeHTML(t("currently"))}</span>
+          <div class="uc-current">
+            <span class="uc-muted">${escapeHTML(t("currently"))}</span>
             <strong>@${escapeHTML(last.user.username)}</strong>
-            <span class="iu-tag ${last.ok ? "iu-tag--green" : "iu-tag--red"}">${last.ok ? "✓" : "✕"}</span>
+            <span class="uc-tag ${last.ok ? "uc-tag--green" : "uc-tag--red"}" title="${escapeAttr(last.reason)}">${last.ok ? "✓" : "✕"}</span>
           </div>` : "");
 
     return `
-      <div class="iu-progress ${isDone ? "iu-progress--done" : ""}">
-        <div class="iu-progress-head">
+      <div class="uc-progress ${isDone ? "uc-progress--done" : ""}">
+        <div class="uc-progress-head">
           <h2>${escapeHTML(isDone ? t("unfollowDoneTitle") : (state.unfollowPaused ? t("paused") : t("unfollowing")))}</h2>
           <p data-progress-note>${escapeHTML(state.progress.note || "")}</p>
         </div>
-        <div class="iu-bar"><span data-progress-bar style="width:${percent}%"></span></div>
-        <div class="iu-progress-meta">
+        <div class="uc-bar"><span data-progress-bar style="width:${percent}%"></span></div>
+        <div class="uc-progress-meta">
           <span>${escapeHTML(summary)}</span>
-          <span data-countdown class="iu-muted"></span>
+          <span data-countdown class="uc-muted"></span>
         </div>
         ${resultList}
-        ${state.mode === "unfollowing" && state.rateLimited ? `<div class="iu-warn">${escapeHTML(t("rateLimitPaused"))}</div>` : ""}
-        ${state.mode === "unfollowing" ? `<div class="iu-warn iu-warn--soft">${escapeHTML(t("keepTabOpen"))}</div>` : ""}
-        <div class="iu-progress-actions">
+        ${state.mode === "unfollowing" && state.pauseReason ? `<div class="uc-warn">${escapeHTML(t(state.pauseReason))}</div>` : ""}
+        ${state.mode === "unfollowing" ? `<div class="uc-warn uc-warn--soft">${escapeHTML(t("keepTabOpen"))}</div>` : ""}
+        <div class="uc-progress-actions">
           ${state.mode === "unfollowing" ? `
-            <button type="button" class="iu-btn" data-action="pause-unfollow">${escapeHTML(t(state.unfollowPaused ? "resume" : "pause"))}</button>
-            <button type="button" class="iu-btn iu-btn--ghost" data-action="cancel-unfollow">${escapeHTML(t("cancel"))}</button>
+            <button type="button" class="uc-btn" data-action="pause-unfollow">${escapeHTML(t(state.unfollowPaused ? "resume" : "pause"))}</button>
+            <button type="button" class="uc-btn uc-btn--ghost" data-action="cancel-unfollow">${escapeHTML(t("cancel"))}</button>
           ` : `
-            ${failed.length ? `<button type="button" class="iu-btn iu-btn--danger" data-action="retry-failed">${escapeHTML(t("retryFailed", { count: failed.length }))}</button>` : ""}
-            <button type="button" class="iu-btn iu-btn--primary" data-action="back-results">${escapeHTML(t("goBack"))}</button>
+            ${failed.length ? `<button type="button" class="uc-btn uc-btn--danger" data-action="retry-failed">${escapeHTML(t("retryFailed", { count: failed.length }))}</button>` : ""}
+            <button type="button" class="uc-btn uc-btn--primary" data-action="back-results">${escapeHTML(t("goBack"))}</button>
           `}
         </div>
       </div>
@@ -1281,12 +1664,15 @@
   }
 
   // A compact, non-interactive row for the unfollow-done summary list.
-  function doneRow(user, ok) {
+  function doneRow({ user, ok, reason }) {
     return `
-      <div class="iu-done-row">
-        <img class="iu-avatar iu-avatar--sm" src="${escapeAttr(user.profile_pic_url || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
-        <a class="iu-done-name" href="/${encodeURIComponent(user.username)}/" target="_blank" rel="noopener noreferrer">@${escapeHTML(user.username)}</a>
-        <span class="iu-tag ${ok ? "iu-tag--green" : "iu-tag--red"}">${ok ? "✓" : "✕"}</span>
+      <div class="uc-done-row">
+        <img class="uc-avatar uc-avatar--sm" src="${escapeAttr(user.profile_pic_url || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+        <div class="uc-done-text">
+          <a class="uc-done-name" href="/${encodeURIComponent(user.username)}/" target="_blank" rel="noopener noreferrer">@${escapeHTML(user.username)}</a>
+          ${!ok && reason ? `<span class="uc-done-reason">${escapeHTML(reason)}</span>` : ""}
+        </div>
+        <span class="uc-tag ${ok ? "uc-tag--green" : "uc-tag--red"}">${ok ? "✓" : "✕"}</span>
       </div>`;
   }
 
@@ -1298,6 +1684,7 @@
     body.querySelector("[data-action='cancel-unfollow']")?.addEventListener("click", () => {
       state.unfollowCancelled = true;
       state.unfollowPaused = false;
+      activeRequest?.abort();
     });
     body.querySelector("[data-action='back-results']")?.addEventListener("click", () => {
       state.mode = "results";
@@ -1311,51 +1698,95 @@
     });
   }
 
-  async function startScan() {
+  // --- Scan --------------------------------------------------------------------
+  // Instagram no longer exposes a "follows you back" flag on the following list,
+  // so the scan loads two lists and diffs them: first your followers, then the
+  // people you follow (each checked against the followers as it arrives).
+  async function startScan(options = {}) {
+    if (destroyed || state.mode === "scanning" || state.mode === "unfollowing") return;
     state.error = "";
     state.mode = "scanning";
     state.scanPaused = false;
     state.scanCancelled = false;
     state.users = [];
-    state.followingCount = 0;
-    state.followersCount = 0;
     state.selected.clear();
     state.selectMode = null;
     state.log = [];
-    state.progress = { current: 0, total: 0, label: "loadingFollowing", note: "" };
-    renderBody();
+    state.partial = false;
+    state.staleNotice = "";
+    state.progress = { current: 0, total: 0, label: "loadingFollowers", note: visibilityNote() };
 
+    let checkpoint = null;
     try {
       const sessErr = sessionError();
-      if (sessErr) throw new Error(t(sessErr));
+      if (sessErr) throw scanError("session", t(sessErr));
       const viewerId = getCookie("ds_user_id");
-
-      const onPage = (results, totalGuess) => {
-        state.progress = {
-          current: results.length,
-          total: totalGuess || 0,
-          label: "loadingFollowing",
-          note: ""
-        };
-        updateProgressDOM();
-      };
-
-      const following = await fetchFollowingWithBackStatus(viewerId, onPage);
-      if (state.scanCancelled) return resetToIdle();
-      state.followingCount = following.length;
-      state.followersCount = following.filter((user) => user.follows_viewer).length;
-      state.users = following;
-
-      state.mode = "results";
-      const nonFollowers = state.users.filter((u) => !u.follows_viewer && !state.hidden.has(u.id)).length;
-      toast(t("scanCompletedToast", { count: nonFollowers }));
+      const previous = options.resume ? state.checkpoint : null;
+      checkpoint = previous && previous.viewerId === String(viewerId) ? previous : createCheckpoint(viewerId);
+      checkpoint.stopReason = "";
+      state.checkpoint = checkpoint;
       renderBody();
+
+      const counts = await fetchViewerCounts(viewerId);
+
+      if (!checkpoint.followersDone) {
+        await loadList(checkpoint, viewerId, "followers", counts.followers);
+        if (state.scanCancelled || destroyed) return stopScan(checkpoint);
+        checkpoint.followersCursor = "";
+        checkpoint.followersDone = true;
+        saveCheckpoint(checkpoint);
+      }
+
+      if (!checkpoint.followingDone) {
+        state.users = withFollowBack(checkpoint.following, checkpoint);
+        await loadList(checkpoint, viewerId, "following", counts.following);
+        if (state.scanCancelled || destroyed) return stopScan(checkpoint);
+        checkpoint.followingCursor = "";
+        checkpoint.followingDone = true;
+      }
+
+      showResults(checkpoint, true);
+      clearCheckpoint();
     } catch (error) {
-      console.error("[iu] scan failed:", error);
-      state.error = error?.message || String(error) || t("scanFailed");
+      if (destroyed) return;
+      if (state.scanCancelled || error?.kind === "cancelled") return stopScan(checkpoint);
+      console.error("[uc] scan failed:", error);
+      const message = error?.message || t("scanFailed");
+      if (checkpoint) {
+        checkpoint.stopReason = message;
+        saveCheckpoint(checkpoint);
+      }
+      // Followers are complete, so every non-follower found so far is certain:
+      // show them now and offer to resume the rest later.
+      if (checkpoint?.followersDone && checkpoint.following.length) return showResults(checkpoint, false);
+      state.error = message;
       state.mode = "idle";
       renderBody();
     }
+  }
+
+  function stopScan(checkpoint) {
+    if (destroyed) return;
+    state.scanCancelled = false;
+    if (checkpoint?.followersDone && checkpoint.following.length) {
+      saveCheckpoint(checkpoint);
+      return showResults(checkpoint, false);
+    }
+    if (checkpoint && !checkpoint.followerIds.length && !checkpoint.following.length) clearCheckpoint();
+    else saveCheckpoint(checkpoint);
+    resetToIdle();
+  }
+
+  function showResults(checkpoint, complete) {
+    state.users = withFollowBack(checkpoint.following, checkpoint);
+    state.partial = !complete;
+    state.staleNotice = "";
+    state.mode = "results";
+    if (complete) {
+      saveLastScan();
+      toast(t("scanCompletedToast", { count: nonFollowers().length }));
+    }
+    renderBody();
   }
 
   function resetToIdle() {
@@ -1366,71 +1797,216 @@
     renderBody();
   }
 
-  async function fetchFollowingWithBackStatus(viewerId, onPage) {
-    const results = [];
-    let cursor = "";
+  function setScanProgress(current, total, label) {
+    state.progress = { current, total: total || 0, label, note: visibilityNote() };
+    updateProgressDOM();
+  }
+
+  // Follower / following totals, only used to draw a real progress bar. Best
+  // effort: if Instagram doesn't answer, the bar is simply indeterminate.
+  async function fetchViewerCounts(viewerId) {
+    try {
+      const response = await fetch(`/api/v1/users/${encodeURIComponent(viewerId)}/info/`, {
+        credentials: "include",
+        headers: IG_HEADERS
+      });
+      const user = response.ok ? (await response.json())?.user : null;
+      return {
+        followers: Number(user?.follower_count) || 0,
+        following: Number(user?.following_count) || 0
+      };
+    } catch {
+      return { followers: 0, following: 0 };
+    }
+  }
+
+  function followerEntries(checkpoint) {
+    const names = checkpoint.followerNames || [];
+    return checkpoint.followerIds.map((id, index) => ({ id: String(id), username: names[index] || "" }));
+  }
+
+  // Mark each followed account with whether it follows back. Matches by id, and
+  // by username as a fallback (ids are occasionally returned in another form).
+  function withFollowBack(following, checkpoint) {
+    const keys = new Set();
+    for (const follower of followerEntries(checkpoint)) {
+      keys.add(follower.id);
+      if (follower.username) keys.add("@" + follower.username.toLowerCase());
+    }
+    return following.map((user) => ({
+      ...user,
+      follows_viewer: keys.has(String(user.id)) || (Boolean(user.username) && keys.has("@" + user.username.toLowerCase()))
+    }));
+  }
+
+  // Load one list ("followers" | "following") page by page into the checkpoint,
+  // continuing from its saved cursor.
+  async function loadList(checkpoint, viewerId, kind, total) {
+    const isFollowing = kind === "following";
+    const cursorKey = isFollowing ? "followingCursor" : "followersCursor";
+    const label = isFollowing ? "loadingFollowing" : "loadingFollowers";
+    const seed = isFollowing ? checkpoint.following : followerEntries(checkpoint);
+
+    const onPage = (results, nextCursor) => {
+      if (isFollowing) {
+        checkpoint.following = results;
+        state.users = withFollowBack(results, checkpoint);
+      } else {
+        checkpoint.followerIds = results.map((u) => u.id);
+        checkpoint.followerNames = results.map((u) => u.username);
+      }
+      checkpoint[cursorKey] = nextCursor;
+      saveCheckpoint(checkpoint);
+      setScanProgress(results.length, total, label);
+    };
+
+    setScanProgress(seed.length, total, label);
+    try {
+      await fetchFriendshipList(viewerId, kind, onPage, { cursor: checkpoint[cursorKey], seed });
+    } catch (error) {
+      // A saved cursor can expire between sessions. Restart just this list once
+      // instead of failing the whole scan.
+      if (error?.kind !== "http" || error.status !== 400 || !checkpoint[cursorKey]) throw error;
+      console.warn(`[uc] saved ${kind} cursor was rejected, reloading that list`);
+      checkpoint[cursorKey] = "";
+      if (isFollowing) checkpoint.following = [];
+      else { checkpoint.followerIds = []; checkpoint.followerNames = []; }
+      setScanProgress(0, total, label);
+      await fetchFriendshipList(viewerId, kind, onPage, {});
+    }
+  }
+
+  function friendshipListUrl(viewerId, kind, cursor) {
+    const count = clamp(Math.round(state.timings.usersPerRequest) || DEFAULT_TIMINGS.usersPerRequest, 1, MAX_USERS_PER_REQUEST);
+    const base = `/api/v1/friendships/${encodeURIComponent(viewerId)}/${kind}/?count=${count}`;
+    return cursor ? `${base}&max_id=${encodeURIComponent(cursor)}` : base;
+  }
+
+  async function fetchFriendshipList(viewerId, kind, onPage, { cursor = "", seed = [] } = {}) {
+    const byId = new Map(seed.map((user) => [String(user.id), user]));
+    const seenCursors = new Set(cursor ? [cursor] : []);
     let page = 0;
-    let totalGuess = 0;
 
     while (true) {
       await waitWhile(() => state.scanPaused && !state.scanCancelled);
-      if (state.scanCancelled) return results;
+      if (state.scanCancelled || destroyed) return;
 
-      const variables = {
-        id: viewerId,
-        include_reel: true,
-        fetch_mutual: false,
-        first: 24
-      };
-      if (cursor) variables.after = cursor;
-      const url = `/graphql/query/?query_hash=3dec7e2c57367ef3da3d987d89f9dbc8&variables=${encodeURIComponent(JSON.stringify(variables))}`;
-      const json = await igFetch(url);
-      const edge = json?.data?.user?.edge_follow;
-      if (!edge?.edges) throw new Error(t("scanFailed"));
-      const users = edge.edges.map((item) => normalizeUser(item.node)).filter((u) => u.id && u.username);
-      results.push(...users);
+      const json = await igFetch(friendshipListUrl(viewerId, kind, cursor));
+      if (state.scanCancelled || destroyed) return;
+      if (!Array.isArray(json?.users)) throw scanError("http", t("scanFailed"));
+      // Instagram flags lists it is deliberately truncating; diffing those would
+      // report people who do follow you as non-followers.
+      if (json.should_limit_list_of_followers === true || json.should_limit_list_of_followings === true) {
+        throw scanError("limited", t("limitedList"));
+      }
 
-      if (!totalGuess && typeof edge.count === "number") totalGuess = edge.count;
-      onPage(results, totalGuess);
+      const users = json.users.map(normalizeUser).filter((u) => u.id && u.username);
+      for (const user of users) byId.set(user.id, user);
 
-      cursor = edge.page_info?.end_cursor || "";
+      const nextCursor = json.next_max_id == null ? "" : String(json.next_max_id);
+      const finished = json.has_more === false || !nextCursor;
+      // Guard against a list that claims more pages but gives no way to reach
+      // them, or loops back to a cursor we've already seen.
+      if (finished && json.has_more === true) throw scanError("http", t("scanFailed"));
+      if (!finished && (!users.length || seenCursors.has(nextCursor))) throw scanError("http", t("scanFailed"));
+
+      onPage([...byId.values()], finished ? "" : nextCursor);
+      if (finished) return;
+
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
       page += 1;
-      if (!edge.page_info?.has_next_page || !cursor) break;
-
-      await sleep(randomBetween(state.timings.scanDelayMin, state.timings.scanDelayMax));
+      await sleepWithCountdown(randomBetween(state.timings.scanDelayMin, state.timings.scanDelayMax), "nextActionIn");
       if (state.timings.scanPauseEveryPages > 0 && page % state.timings.scanPauseEveryPages === 0) {
-        await sleepWithCountdown(state.timings.scanPauseMs, "scanPause");
+        const jitter = randomBetween(-SCAN_PAUSE_JITTER_MS, SCAN_PAUSE_JITTER_MS);
+        await sleepWithCountdown(Math.max(0, state.timings.scanPauseMs + jitter), "scanPause");
       }
     }
-    return dedupe(results);
   }
 
-  // Shared fetch with rate-limit resilience: retries on 429/5xx up to MAX_RETRIES
-  // with Retry-After / exponential backoff, surfacing a countdown. Pass
-  // { raw: true } to get the Response back (no JSON parse) — used by unfollow,
-  // which only cares whether the request succeeded.
+  // Instagram's web client sends the CSRF token on list reads too.
+  function csrfHeader() {
+    const csrf = getCookie("csrftoken");
+    return csrf ? { "x-csrftoken": csrf } : {};
+  }
+
+  function scanError(kind, message, status = 0) {
+    const error = new Error(message);
+    error.kind = kind;
+    error.status = status;
+    return error;
+  }
+
+  function parseJSON(text) {
+    try {
+      // Some Instagram/Facebook endpoints prefix JSON with an anti-hijacking guard.
+      return JSON.parse(String(text || "").replace(/^for \(;;\);/, ""));
+    } catch {
+      return null;
+    }
+  }
+
+  // Shared fetch for the scan. Classifies failures so the caller can react:
+  // "session" (signed out), "rate" (429), "blocked" (action block/checkpoint),
+  // "network", "http", "cancelled". Network errors and 5xx retry with backoff;
+  // a 429 gets a couple of long cooldowns, and blocks stop immediately —
+  // hammering either only extends Instagram's restriction. The checkpoint makes
+  // stopping cheap.
   async function igFetch(url, init = {}) {
-    const { raw, headers, ...rest } = init;
     let attempt = 0;
+    let rateAttempt = 0;
     while (true) {
-      const response = await fetch(url, {
-        credentials: "include",
-        ...rest,
-        headers: { ...IG_HEADERS, ...(headers || {}) }
-      });
-      if (response.ok) return raw ? response : response.json();
-      if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
-        if (attempt >= MAX_RETRIES) {
-          if (response.status === 429) throw new Error(t("tooManyRequests"));
-          throw new Error(t("requestFailed", { status: response.status }));
-        }
+      if (destroyed || state.scanCancelled) throw scanError("cancelled", "cancelled");
+      const controller = new AbortController();
+      activeRequest = controller;
+      let response;
+      try {
+        response = await fetch(url, {
+          credentials: "include",
+          ...init,
+          headers: { ...IG_HEADERS, ...csrfHeader(), ...(init.headers || {}) },
+          signal: controller.signal
+        });
+      } catch {
+        if (destroyed || state.scanCancelled) throw scanError("cancelled", "cancelled");
+        if (attempt >= MAX_RETRIES) throw scanError("network", t("networkError"));
+        await sleepWithCountdown(Math.min(30000, 3000 * Math.pow(2, attempt)), "cooldownIn");
+        attempt += 1;
+        continue;
+      } finally {
+        if (activeRequest === controller) activeRequest = null;
+      }
+
+      const json = parseJSON(await response.text().catch(() => ""));
+      const message = json ? String(json.message || json.error_type || "") : "";
+      if (response.status === 401 || json?.require_login || /login_required/i.test(message)) {
+        throw scanError("session", t("sessionExpired"), response.status);
+      }
+      if (response.status === 429 || /rate.?limit|too many requests|please wait a few minutes/i.test(message)) {
+        if (rateAttempt >= RATE_LIMIT_RETRIES) throw scanError("rate", t("tooManyRequests"), response.status);
+        rateAttempt += 1;
         const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
-        const wait = retryAfter || Math.min(60000, 5000 * Math.pow(2, attempt));
-        await sleepWithCountdown(wait, "cooldownIn");
+        await sleepWithCountdown(Math.max(retryAfter, RATE_LIMIT_COOLDOWN_MS * rateAttempt), "cooldownIn");
+        continue;
+      }
+      if (response.status === 403 || json?.spam || json?.challenge || json?.checkpoint_url || json?.feedback_required ||
+          /feedback_required|checkpoint_required|challenge_required/i.test(message)) {
+        throw scanError("blocked", t("scanBlocked"), response.status);
+      }
+      if (response.status >= 500) {
+        if (attempt >= MAX_RETRIES) throw scanError("http", t("requestFailed", { status: response.status }), response.status);
+        const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
+        await sleepWithCountdown(retryAfter || Math.min(60000, 5000 * Math.pow(2, attempt)), "cooldownIn");
         attempt += 1;
         continue;
       }
-      throw new Error(t("requestFailed", { status: response.status }));
+      if (response.ok) {
+        // A 200 with HTML instead of JSON is Instagram's login page.
+        if (!json || typeof json !== "object") throw scanError("session", t("sessionExpired"), response.status);
+        if (json.status && json.status !== "ok") throw scanError("http", t("scanFailed"), response.status);
+        return json;
+      }
+      throw scanError("http", t("requestFailed", { status: response.status }), response.status);
     }
   }
 
@@ -1443,6 +2019,7 @@
     return 0;
   }
 
+  // --- Unfollow ----------------------------------------------------------------
   function confirmUnfollow() {
     if (!state.selected.size) return;
     const count = state.selected.size;
@@ -1456,6 +2033,7 @@
   }
 
   async function startUnfollow(targets) {
+    if (destroyed || state.mode === "scanning" || state.mode === "unfollowing") return;
     targets = (targets || []).filter(Boolean);
     if (!targets.length) return;
     const sessErr = sessionError();
@@ -1463,53 +2041,56 @@
       toast(t(sessErr));
       return;
     }
-    const csrf = getCookie("csrftoken");
 
     state.mode = "unfollowing";
     state.unfollowPaused = false;
     state.unfollowCancelled = false;
-    state.rateLimited = false;
+    state.pauseReason = "";
     state.log = [];
-    state.failed.clear();
     state.progress = { current: 0, total: targets.length, label: "unfollowing", note: "" };
     renderBody();
 
     let processed = 0;
+    let signedOut = false;
     for (let i = 0; i < targets.length; i += 1) {
       await waitWhile(() => state.unfollowPaused && !state.unfollowCancelled);
-      if (state.unfollowCancelled) break;
+      if (state.unfollowCancelled || destroyed) break;
 
       const user = targets[i];
-      let ok = false;
-      let rateLimited = false;
+      let outcome;
       try {
-        ok = await unfollowUser(user.id, csrf);
+        outcome = await unfollowUser(user);
       } catch (error) {
-        console.error("[iu] unfollow failed for", user.username, error);
-        rateLimited = error && error.message === t("tooManyRequests");
+        console.error("[uc] unfollow failed for", user.username, error);
+        outcome = { ok: false, kind: "network", reason: t("reasonNetwork") };
       }
+      if (destroyed) return;
+      if (state.unfollowCancelled) break;
 
-      // Permanent rate-limit: auto-pause instead of silently failing, surface a
-      // clear warning, and re-try the SAME user once the user resumes.
-      if (rateLimited && !state.unfollowCancelled) {
-        state.rateLimited = true;
+      // Instagram pushed back: auto-pause instead of hammering on, surface a
+      // clear warning, and retry the SAME user once the user resumes.
+      if (outcome.kind === "rate" || outcome.kind === "blocked") {
+        console.warn("[uc] Instagram refused the unfollow:", outcome.reason);
+        state.pauseReason = outcome.kind === "rate" ? "rateLimitPaused" : "blockedPaused";
         state.unfollowPaused = true;
         renderBody();
         await waitWhile(() => state.unfollowPaused && !state.unfollowCancelled);
-        if (state.unfollowCancelled) break;
-        state.rateLimited = false;
-        i -= 1; // retry this user
+        if (state.unfollowCancelled || destroyed) break;
+        state.pauseReason = "";
+        i -= 1;
         continue;
       }
+      // Signed out: nothing else can succeed until the user signs in again.
+      if (outcome.kind === "session") {
+        signedOut = true;
+        break;
+      }
 
-      state.log.push({ user, ok });
-      if (ok) {
-        state.failed.delete(user.id);
+      state.log.push({ user, ok: outcome.ok, reason: outcome.reason || "" });
+      if (outcome.ok) {
         state.selected.delete(user.id);
         const userRef = state.users.find((u) => u.id === user.id);
         if (userRef) userRef.unfollowed = true;
-      } else {
-        state.failed.add(user.id);
       }
       processed += 1;
       state.progress = { current: processed, total: targets.length, label: "unfollowing", note: "" };
@@ -1523,30 +2104,220 @@
         }
       }
     }
+    if (destroyed) return;
 
     state.users = state.users.filter((u) => !u.unfollowed);
+    syncSavedScan();
     state.mode = "unfollowDone";
+    state.unfollowPaused = false;
+    state.pauseReason = "";
     state.waitUntil = 0;
     state.waitReason = "";
+    if (signedOut) state.progress.note = t("cookieMissing");
     renderBody();
   }
 
-  async function unfollowUser(id, csrf) {
-    const init = {
-      method: "POST",
-      raw: true,
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        "x-csrftoken": csrf
+  // Drop unfollowed accounts from the saved scan (checkpoint or last result), so
+  // resuming or reopening it doesn't show them again.
+  function syncSavedScan() {
+    if (state.checkpoint) {
+      const unfollowed = new Set(state.log.filter((e) => e.ok).map((e) => e.user.id));
+      state.checkpoint.following = state.checkpoint.following.filter((u) => !unfollowed.has(u.id));
+      saveCheckpoint(state.checkpoint);
+      return;
+    }
+    const last = loadLastScan();
+    if (last) saveLastScan(last.savedAt);
+  }
+
+  // The fb_dtsg / lsd tokens Instagram's web app sends with every GraphQL
+  // mutation. Read from the page's module registry, then from its HTML, and as
+  // a last resort from a fresh copy of the home page.
+  async function getSessionTokens() {
+    if (sessionTokens) return sessionTokens;
+    try {
+      const req = window.require;
+      if (typeof req === "function") {
+        const dtsg = req("DTSGInitialData")?.token;
+        const lsd = req("LSD")?.token;
+        if (dtsg && lsd) {
+          sessionTokens = { dtsg, lsd, revision: String(req("SiteData")?.client_revision || "") };
+          return sessionTokens;
+        }
       }
+    } catch {
+      /* module registry unavailable; fall back to the HTML */
+    }
+    sessionTokens = tokensFromHtml(document.documentElement?.innerHTML || "");
+    if (!sessionTokens) {
+      try {
+        const response = await fetch("/", { credentials: "include" });
+        sessionTokens = tokensFromHtml(await response.text());
+      } catch (error) {
+        console.warn("[uc] could not read Instagram session tokens:", error);
+      }
+    }
+    return sessionTokens;
+  }
+
+  function tokensFromHtml(html) {
+    const dtsg = /"DTSGInitialData",\[\],\{"token":"([^"]+)"/.exec(html)?.[1] || /"dtsg":\{"token":"([^"]+)"/.exec(html)?.[1];
+    const lsd = /"LSD",\[\],\{"token":"([^"]+)"/.exec(html)?.[1];
+    if (!dtsg || !lsd) return null;
+    return { dtsg, lsd, revision: /"client_revision":(\d+)/.exec(html)?.[1] || "" };
+  }
+
+  // Checksum Instagram expects next to fb_dtsg.
+  function jazoest(token) {
+    let sum = 0;
+    for (let i = 0; i < token.length; i += 1) sum += token.charCodeAt(i);
+    return `2${sum}`;
+  }
+
+  // Unfollow one account and make sure it actually happened. Returns
+  // { ok, kind, reason } where kind is "rate" | "blocked" | "session" when
+  // Instagram refused the action as a whole, or "" otherwise.
+  async function unfollowUser(user) {
+    const csrf = getCookie("csrftoken");
+    if (!csrf) return { ok: false, kind: "session", reason: t("csrfMissing") };
+    const tokens = await getSessionTokens();
+    const outcome = tokens ? await unfollowViaGraphQL(user, csrf, tokens) : await unfollowViaRest(user, csrf);
+    if (!outcome.ok || outcome.confirmed) return outcome;
+
+    // Instagram accepted the request without echoing the new friendship state:
+    // double-check against the following list before reporting success.
+    const still = await isStillFollowing(user);
+    if (still === false) return { ok: true, kind: "", reason: "" };
+    const reason = t(still ? "reasonStillFollowing" : "reasonUnconfirmed");
+    console.warn("[uc]", user.username, reason);
+    return { ok: false, kind: "", reason };
+  }
+
+  async function unfollowViaGraphQL(user, csrf, tokens) {
+    const params = {
+      av: getCookie("ds_user_id") || "",
+      __d: "www",
+      __user: "0",
+      __a: "1",
+      __comet_req: "7",
+      fb_dtsg: tokens.dtsg,
+      jazoest: jazoest(tokens.dtsg),
+      lsd: tokens.lsd,
+      fb_api_caller_class: "RelayModern",
+      fb_api_req_friendly_name: UNFOLLOW_FRIENDLY_NAME,
+      variables: JSON.stringify({
+        target_user_id: String(user.id),
+        container_module: "profile",
+        nav_chain: "PolarisProfilePostsTabRoot:profilePage:1:via_cold_start"
+      }),
+      server_timestamps: "true",
+      doc_id: UNFOLLOW_DOC_ID
     };
-    // Both endpoints go through igFetch, so a 429/5xx auto-backs-off (and a
-    // permanent rate-limit throws, letting startUnfollow auto-pause). The first
-    // is the modern API; the second is a fallback for other failures.
-    const primary = await igFetch(`/api/v1/friendships/destroy/${id}/`, init);
-    if (primary.ok) return true;
-    const fallback = await igFetch(`/web/friendships/${id}/unfollow/`, init);
-    return fallback.ok;
+    if (tokens.revision) {
+      params.__rev = tokens.revision;
+      params.__spin_r = tokens.revision;
+    }
+    return postUnfollow("/api/graphql", new URLSearchParams(params).toString(), {
+      "x-csrftoken": csrf,
+      "x-fb-friendly-name": UNFOLLOW_FRIENDLY_NAME,
+      "x-fb-lsd": tokens.lsd
+    });
+  }
+
+  async function unfollowViaRest(user, csrf) {
+    return postUnfollow(`/api/v1/friendships/destroy/${encodeURIComponent(user.id)}/`, "", {
+      "x-csrftoken": csrf,
+      "x-requested-with": "XMLHttpRequest"
+    });
+  }
+
+  async function postUnfollow(url, body, headers) {
+    const controller = new AbortController();
+    activeRequest = controller;
+    let response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "x-ig-app-id": IG_APP_ID,
+          "x-asbd-id": IG_ASBD_ID,
+          ...headers
+        },
+        body,
+        signal: controller.signal
+      });
+    } catch {
+      return { ok: false, kind: "network", reason: t("reasonNetwork") };
+    } finally {
+      if (activeRequest === controller) activeRequest = null;
+    }
+    return evaluateUnfollowResponse(response.status, await response.text().catch(() => ""));
+  }
+
+  // Never trust a 200 alone: Instagram answers 200 for rejected mutations too,
+  // with the real outcome (errors, action blocks, friendship state) in the body.
+  function evaluateUnfollowResponse(status, text) {
+    const payload = parseJSON(text);
+    const message = [
+      payload?.message,
+      payload?.errorSummary,
+      payload?.errors ? JSON.stringify(payload.errors) : "",
+      payload?.error ? JSON.stringify(payload.error) : ""
+    ].filter(Boolean).join(" ");
+
+    if (status === 401 || payload?.require_login === true || /login_required/i.test(message)) {
+      return { ok: false, kind: "session", reason: message || `HTTP ${status}` };
+    }
+    if (status === 429 || /rate.?limit|too many requests|please wait a few minutes/i.test(message)) {
+      return { ok: false, kind: "rate", reason: message || `HTTP ${status}` };
+    }
+    if (status === 403 || payload?.feedback_required === true || payload?.spam === true ||
+        /feedback_required|checkpoint_required|challenge_required|action_blocked|try again later/i.test(message)) {
+      return { ok: false, kind: "blocked", reason: message || `HTTP ${status}` };
+    }
+    if (status < 200 || status >= 300 || !payload) {
+      return { ok: false, kind: "", reason: t("reasonRejected") + (status >= 300 ? ` (HTTP ${status})` : "") };
+    }
+    if (payload.errors || payload.error || payload.status === "fail") {
+      return { ok: false, kind: "", reason: message || t("reasonRejected") };
+    }
+    const friendship = findFriendshipStatus(payload);
+    if (friendship && (friendship.following === true || friendship.outgoing_request === true)) {
+      return { ok: false, kind: "", reason: t("reasonStillFollowing") };
+    }
+    return { ok: true, kind: "", reason: "", confirmed: friendship?.following === false };
+  }
+
+  function findFriendshipStatus(node) {
+    if (!node || typeof node !== "object") return undefined;
+    if (node.friendship_status && typeof node.friendship_status === "object") return node.friendship_status;
+    for (const value of Object.values(node)) {
+      const found = findFriendshipStatus(value);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+
+  // true / false when Instagram's following search answers, null when unknown.
+  async function isStillFollowing(user) {
+    const viewerId = getCookie("ds_user_id");
+    if (!viewerId) return null;
+    const url = `/api/v1/friendships/${encodeURIComponent(viewerId)}/following/?count=12&query=${encodeURIComponent(user.username)}&search_surface=follow_list_page`;
+    try {
+      const response = await fetch(url, { credentials: "include", headers: { ...IG_HEADERS, ...csrfHeader() } });
+      if (!response.ok) return null;
+      const json = parseJSON(await response.text());
+      if (!Array.isArray(json?.users)) return null;
+      const target = user.username.toLowerCase();
+      return json.users.some((raw) => {
+        const found = normalizeUser(raw);
+        return found.id === String(user.id) || found.username.toLowerCase() === target;
+      });
+    } catch {
+      return null;
+    }
   }
 
   async function copyUsernames() {
@@ -1560,7 +2331,7 @@
       await navigator.clipboard.writeText(text);
       toast(t("copiedToast", { count: target.length }));
     } catch (error) {
-      console.error("[iu] copy failed:", error);
+      console.error("[uc] copy failed:", error);
       const ta = document.createElement("textarea");
       ta.value = text;
       ta.style.position = "fixed";
@@ -1579,29 +2350,33 @@
       ["scanDelayMax", "maxScanDelay", 100],
       ["scanPauseEveryPages", "scanPauseEvery", 1],
       ["scanPauseMs", "scanPauseLength", 1000],
+      ["usersPerRequest", "usersPerRequest", 1, 1, MAX_USERS_PER_REQUEST],
       ["unfollowDelayMin", "minUnfollowDelay", 1000],
       ["unfollowDelayMax", "maxUnfollowDelay", 1000],
       ["unfollowPauseEvery", "unfollowPauseEvery", 1],
       ["unfollowPauseMs", "unfollowPauseLength", 1000]
     ];
-    const formHTML = fields.map(([key, label, step]) => `
-      <label class="iu-field">
+    const formHTML = fields.map(([key, label, step, min = 0, max]) => `
+      <label class="uc-field">
         <span>${escapeHTML(t(label))}</span>
-        <input type="number" min="0" step="${step}" data-setting="${escapeAttr(key)}" value="${Number(state.timings[key])}">
+        <input type="number" min="${min}"${max ? ` max="${max}"` : ""} step="${step}" data-setting="${escapeAttr(key)}" value="${Number(state.timings[key])}">
       </label>
     `).join("");
 
     showDialog({
       title: t("settingsTitle"),
       body: t("settingsBody"),
-      contentHTML: `<div class="iu-form">${formHTML}</div>`,
+      contentHTML: `<div class="uc-form">${formHTML}</div>`,
       confirmLabel: t("save"),
       extraButton: { label: t("restoreDefaults"), action: "restore" },
       onConfirm: (dialog) => {
         dialog.querySelectorAll("[data-setting]").forEach((input) => {
           const key = input.getAttribute("data-setting");
           const val = Number(input.value);
-          if (Number.isFinite(val) && val >= 0) state.timings[key] = val;
+          const min = Number(input.min || 0);
+          const max = input.max ? Number(input.max) : Infinity;
+          // Out-of-range or empty values keep the current setting.
+          if (input.value !== "" && Number.isFinite(val) && val >= min && val <= max) state.timings[key] = val;
         });
         persist();
         toast(t("saved"));
@@ -1617,32 +2392,66 @@
   }
 
   function showDialog({ title, body, contentHTML, confirmLabel, destructive, extraButton, onConfirm, onExtra }) {
+    document.querySelector(`#${APP_ID} .uc-overlay`)?.remove();
+    const titleId = `${APP_ID}-dialog-title`;
+    const previouslyFocused = document.activeElement;
     const overlay = document.createElement("div");
-    overlay.className = "iu-overlay";
+    overlay.className = "uc-overlay";
     overlay.innerHTML = `
-      <div class="iu-dialog" role="dialog" aria-modal="true">
-        <h3>${escapeHTML(title)}</h3>
+      <div class="uc-dialog" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1">
+        <h3 id="${titleId}">${escapeHTML(title)}</h3>
         ${body ? `<p>${escapeHTML(body)}</p>` : ""}
         ${contentHTML || ""}
-        <div class="iu-dialog-actions">
-          ${extraButton ? `<button type="button" class="iu-btn iu-btn--ghost iu-btn--small" data-extra>${escapeHTML(extraButton.label)}</button>` : ""}
-          <button type="button" class="iu-btn iu-btn--small" data-cancel>${escapeHTML(t("cancel"))}</button>
-          <button type="button" class="iu-btn iu-btn--small ${destructive ? "iu-btn--danger" : "iu-btn--primary"}" data-confirm>${escapeHTML(confirmLabel)}</button>
+        <div class="uc-dialog-actions">
+          ${extraButton ? `<button type="button" class="uc-btn uc-btn--ghost uc-btn--small" data-extra>${escapeHTML(extraButton.label)}</button>` : ""}
+          <button type="button" class="uc-btn uc-btn--small" data-cancel>${escapeHTML(t("cancel"))}</button>
+          <button type="button" class="uc-btn uc-btn--small ${destructive ? "uc-btn--danger" : "uc-btn--primary"}" data-confirm>${escapeHTML(confirmLabel)}</button>
         </div>
       </div>
     `;
-    document.getElementById(APP_ID).appendChild(overlay);
-    const close = () => overlay.remove();
+    document.getElementById(APP_ID)?.appendChild(overlay);
+    const dialog = overlay.querySelector(".uc-dialog");
+    const close = () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      overlay.remove();
+      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus();
+    };
+    // Escape closes; Tab stays inside the dialog (Instagram's page would
+    // otherwise receive focus behind the overlay).
+    function onKeyDown(event) {
+      if (!document.contains(overlay)) return document.removeEventListener("keydown", onKeyDown, true);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = [...dialog.querySelectorAll("button, input")].filter((el) => !el.disabled);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown, true);
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) close();
     });
     overlay.querySelector("[data-cancel]").addEventListener("click", close);
     overlay.querySelector("[data-confirm]").addEventListener("click", () => {
-      try { onConfirm?.(overlay.querySelector(".iu-dialog")); } finally { close(); }
+      try { onConfirm?.(dialog); } finally { close(); }
     });
     if (extraButton && onExtra) {
-      overlay.querySelector("[data-extra]").addEventListener("click", () => onExtra(overlay.querySelector(".iu-dialog")));
+      overlay.querySelector("[data-extra]").addEventListener("click", () => onExtra(dialog));
     }
+    // A destructive confirm starts on Cancel so a stray Enter can't trigger it.
+    (dialog.querySelector("input") || (destructive ? overlay.querySelector("[data-cancel]") : dialog)).focus();
   }
 
   function cycleLanguage() {
@@ -1661,7 +2470,7 @@
   }
 
   function applyTheme() {
-    document.getElementById(APP_ID)?.classList.toggle("iu-theme-light", resolvedTheme() === "light");
+    document.getElementById(APP_ID)?.classList.toggle("uc-theme-light", resolvedTheme() === "light");
   }
 
   function cycleTheme() {
@@ -1706,6 +2515,11 @@
   // the hidden/showHidden toggle. Used to decide which filter chips are relevant
   // (a chip is shown only if that category exists at all), independent of the
   // category filters or search.
+  // Everyone you follow who doesn't follow back and isn't hidden.
+  function nonFollowers() {
+    return state.users.filter((u) => !u.follows_viewer && !state.hidden.has(u.id));
+  }
+
   function getPool() {
     return state.users
       .filter((u) => !u.follows_viewer)
@@ -1714,7 +2528,9 @@
 
   function normalizeUser(raw) {
     return {
-      id: String(raw.id || raw.pk || raw.pk_id || ""),
+      // The friendship APIs carry the numeric id as pk_id / pk; `id` is only a
+      // fallback. Using the same order for both lists keeps the diff consistent.
+      id: String(raw.pk_id ?? raw.pk ?? raw.id ?? "").trim(),
       username: String(raw.username || ""),
       full_name: String(raw.full_name || ""),
       profile_pic_url: String(raw.profile_pic_url || raw.profile_pic_url_hd || ""),
@@ -1735,7 +2551,7 @@
 
   function isDefaultAvatar(user) {
     const url = user.profile_pic_url || "";
-    return /44884218_345707102882519|464760996_1254146839119862/.test(url);
+    return !url || /44884218_345707102882519|464760996_1254146839119862/.test(url);
   }
 
   function getCookie(name) {
@@ -1820,8 +2636,15 @@
     const percent = total ? Math.min(100, Math.round((current / total) * 100)) : 0;
     const bar = root.querySelector("[data-progress-bar]");
     if (bar) bar.style.width = percent + "%";
+    root.querySelector("[data-bar]")?.classList.toggle("uc-bar--indeterminate", !total);
     const counter = root.querySelector("[data-progress-counter]");
-    if (counter) counter.textContent = total ? t("ofTotal", { current, total }) : t("ofUnknown", { current });
+    if (counter) counter.textContent = progressCounter();
+    const live = root.querySelector("[data-live-found]");
+    if (live) {
+      const text = liveFoundLabel();
+      live.textContent = text;
+      live.hidden = !text;
+    }
     const labelEl = root.querySelector("[data-progress-label]");
     if (labelEl) labelEl.textContent = state.scanPaused ? t("paused") : t(label);
     const noteEl = root.querySelector("[data-progress-note]");
@@ -1835,10 +2658,10 @@
   function toast(message) {
     const root = document.getElementById(APP_ID);
     if (!root) return;
-    root.querySelector(".iu-toast")?.remove();
+    root.querySelector(".uc-toast")?.remove();
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
     const node = document.createElement("div");
-    node.className = "iu-toast";
+    node.className = "uc-toast";
     node.textContent = message;
     root.appendChild(node);
     toastTimer = setTimeout(() => { node.remove(); toastTimer = null; }, 3500);
@@ -1867,100 +2690,100 @@
     /* Dark palette (default) — mirrors the website's brand greens (oklch hue 150)
        and surface tokens so the panel matches the site's design language. */
     #${APP_ID} {
-      --iu-bg: oklch(0.18 0.005 250);
-      --iu-bg-2: oklch(0.22 0.006 250);
-      --iu-bg-3: oklch(0.26 0.007 250);
-      --iu-line: oklch(0.30 0.008 250);
-      --iu-line-strong: oklch(0.38 0.009 250);
-      --iu-text: oklch(0.97 0 0);
-      --iu-muted: oklch(0.72 0.01 250);
-      --iu-accent: oklch(0.70 0.17 150);
-      --iu-accent-2: oklch(0.78 0.16 150);
-      --iu-accent-ink: oklch(0.18 0.005 250);
-      --iu-danger: #ef4444;
-      --iu-success: oklch(0.70 0.17 150);
+      --uc-bg: oklch(0.18 0.005 250);
+      --uc-bg-2: oklch(0.22 0.006 250);
+      --uc-bg-3: oklch(0.26 0.007 250);
+      --uc-line: oklch(0.30 0.008 250);
+      --uc-line-strong: oklch(0.38 0.009 250);
+      --uc-text: oklch(0.97 0 0);
+      --uc-muted: oklch(0.72 0.01 250);
+      --uc-accent: oklch(0.70 0.17 150);
+      --uc-accent-2: oklch(0.78 0.16 150);
+      --uc-accent-ink: oklch(0.18 0.005 250);
+      --uc-danger: #ef4444;
+      --uc-success: oklch(0.70 0.17 150);
       position: fixed;
       inset: 0;
       pointer-events: none;
       z-index: 2147483647;
-      color: var(--iu-text);
+      color: var(--uc-text);
       font: 14px/1.45 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     }
     /* Light palette — mirrors the site's light surface + brand tokens. */
-    #${APP_ID}.iu-theme-light {
-      --iu-bg: oklch(0.98 0.003 250);
-      --iu-bg-2: oklch(0.96 0.004 250);
-      --iu-bg-3: oklch(0.92 0.006 250);
-      --iu-line: oklch(0.87 0.008 250);
-      --iu-line-strong: oklch(0.80 0.010 250);
-      --iu-text: oklch(0.22 0.01 250);
-      --iu-muted: oklch(0.50 0.01 250);
-      --iu-accent: oklch(0.60 0.17 150);
-      --iu-accent-2: oklch(0.68 0.16 150);
-      --iu-accent-ink: #ffffff;
-      --iu-danger: #dc2626;
-      --iu-success: oklch(0.60 0.17 150);
+    #${APP_ID}.uc-theme-light {
+      --uc-bg: oklch(0.98 0.003 250);
+      --uc-bg-2: oklch(0.96 0.004 250);
+      --uc-bg-3: oklch(0.92 0.006 250);
+      --uc-line: oklch(0.87 0.008 250);
+      --uc-line-strong: oklch(0.80 0.010 250);
+      --uc-text: oklch(0.22 0.01 250);
+      --uc-muted: oklch(0.50 0.01 250);
+      --uc-accent: oklch(0.60 0.17 150);
+      --uc-accent-2: oklch(0.68 0.16 150);
+      --uc-accent-ink: #ffffff;
+      --uc-danger: #dc2626;
+      --uc-success: oklch(0.60 0.17 150);
     }
     #${APP_ID} > * { pointer-events: auto; }
     #${APP_ID} button, #${APP_ID} input, #${APP_ID} a { font: inherit; color: inherit; }
     #${APP_ID} a { text-decoration: none; }
     #${APP_ID} button { cursor: pointer; }
 
-    #${APP_ID} .iu-panel {
+    #${APP_ID} .uc-panel {
       position: absolute;
       width: ${PANEL_WIDTH}px;
       max-width: calc(100vw - 24px);
       max-height: calc(100vh - 24px);
       display: flex;
       flex-direction: column;
-      background: var(--iu-bg);
-      border: 1px solid var(--iu-line);
+      background: var(--uc-bg);
+      border: 1px solid var(--uc-line);
       border-radius: 12px;
       box-shadow: 0 24px 60px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
       overflow: hidden;
-      animation: iu-pop 0.18s ease-out;
+      animation: uc-pop 0.18s ease-out;
     }
-    #${APP_ID} .iu-panel.iu-resizing { user-select: none; }
+    #${APP_ID} .uc-panel.uc-resizing { user-select: none; }
     /* Resize handles: thin strips on the 4 edges, small squares on the 4 corners. */
-    #${APP_ID} .iu-resize { position: absolute; z-index: 5; touch-action: none; }
-    #${APP_ID} .iu-resize--n { top: -3px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
-    #${APP_ID} .iu-resize--s { bottom: -3px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
-    #${APP_ID} .iu-resize--e { right: -3px; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
-    #${APP_ID} .iu-resize--w { left: -3px; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
-    #${APP_ID} .iu-resize--ne { top: -4px; right: -4px; width: 14px; height: 14px; cursor: nesw-resize; }
-    #${APP_ID} .iu-resize--nw { top: -4px; left: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
-    #${APP_ID} .iu-resize--se { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
-    #${APP_ID} .iu-resize--sw { bottom: -4px; left: -4px; width: 14px; height: 14px; cursor: nesw-resize; }
-    @keyframes iu-pop {
+    #${APP_ID} .uc-resize { position: absolute; z-index: 5; touch-action: none; }
+    #${APP_ID} .uc-resize--n { top: -3px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
+    #${APP_ID} .uc-resize--s { bottom: -3px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
+    #${APP_ID} .uc-resize--e { right: -3px; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
+    #${APP_ID} .uc-resize--w { left: -3px; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
+    #${APP_ID} .uc-resize--ne { top: -4px; right: -4px; width: 14px; height: 14px; cursor: nesw-resize; }
+    #${APP_ID} .uc-resize--nw { top: -4px; left: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
+    #${APP_ID} .uc-resize--se { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
+    #${APP_ID} .uc-resize--sw { bottom: -4px; left: -4px; width: 14px; height: 14px; cursor: nesw-resize; }
+    @keyframes uc-pop {
       from { opacity: 0; transform: translateY(8px) scale(0.985); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
-    #${APP_ID} .iu-header {
+    #${APP_ID} .uc-header {
       flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
       padding: 12px 12px 12px 14px;
-      border-bottom: 1px solid var(--iu-line);
+      border-bottom: 1px solid var(--uc-line);
       cursor: grab;
       user-select: none;
-      background: linear-gradient(180deg, color-mix(in srgb, var(--iu-text) 3%, transparent), transparent);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--uc-text) 3%, transparent), transparent);
     }
-    #${APP_ID} .iu-header.iu-dragging { cursor: grabbing; }
-    #${APP_ID} .iu-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-    #${APP_ID} .iu-brand-dot {
+    #${APP_ID} .uc-header.uc-dragging { cursor: grabbing; }
+    #${APP_ID} .uc-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    #${APP_ID} .uc-brand-dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: var(--iu-accent);
+      background: var(--uc-accent);
       flex-shrink: 0;
     }
-    #${APP_ID} .iu-brand-text { min-width: 0; }
-    #${APP_ID} .iu-brand-text strong { display: block; font-size: 14px; font-weight: 600; }
-    #${APP_ID} .iu-brand-text span { display: block; font-size: 11px; color: var(--iu-muted); }
-    #${APP_ID} .iu-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
-    #${APP_ID} .iu-header-actions button {
+    #${APP_ID} .uc-brand-text { min-width: 0; }
+    #${APP_ID} .uc-brand-text strong { display: block; font-size: 14px; font-weight: 600; }
+    #${APP_ID} .uc-brand-text span { display: block; font-size: 11px; color: var(--uc-muted); }
+    #${APP_ID} .uc-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    #${APP_ID} .uc-header-actions button {
       width: 28px;
       height: 28px;
       display: grid;
@@ -1968,15 +2791,15 @@
       border: none;
       background: transparent;
       border-radius: 6px;
-      color: var(--iu-muted);
+      color: var(--uc-muted);
       transition: background 0.15s, color 0.15s;
       font-size: 11px;
       font-weight: 600;
     }
-    #${APP_ID} .iu-header-actions button:hover { background: var(--iu-bg-2); color: var(--iu-text); }
-    #${APP_ID} .iu-header-actions svg { display: block; }
+    #${APP_ID} .uc-header-actions button:hover { background: var(--uc-bg-2); color: var(--uc-text); }
+    #${APP_ID} .uc-header-actions svg { display: block; }
 
-    #${APP_ID} .iu-body {
+    #${APP_ID} .uc-body {
       flex: 1 1 auto;
       min-height: 0;
       display: flex;
@@ -1984,7 +2807,7 @@
       overflow: hidden;
     }
 
-    #${APP_ID} .iu-welcome {
+    #${APP_ID} .uc-welcome {
       padding: 28px 22px;
       text-align: center;
       display: flex;
@@ -1992,240 +2815,272 @@
       align-items: center;
       gap: 10px;
     }
-    #${APP_ID} .iu-welcome-icon {
+    #${APP_ID} .uc-welcome-icon {
       width: 64px;
       height: 64px;
       display: grid;
       place-items: center;
       border-radius: 50%;
-      background: color-mix(in srgb, var(--iu-accent) 15%, transparent);
-      color: var(--iu-accent);
+      background: color-mix(in srgb, var(--uc-accent) 15%, transparent);
+      color: var(--uc-accent);
       margin-bottom: 4px;
     }
-    #${APP_ID} .iu-welcome-icon--error { background: color-mix(in srgb, var(--iu-danger) 15%, transparent); color: var(--iu-danger); }
-    #${APP_ID} .iu-welcome h2 { margin: 0; font-size: 17px; font-weight: 600; }
-    #${APP_ID} .iu-welcome p { margin: 0; color: var(--iu-muted); font-size: 13px; max-width: 300px; }
+    #${APP_ID} .uc-welcome-icon--error { background: color-mix(in srgb, var(--uc-danger) 15%, transparent); color: var(--uc-danger); }
+    #${APP_ID} .uc-welcome h2 { margin: 0; font-size: 17px; font-weight: 600; }
+    #${APP_ID} .uc-welcome p { margin: 0; color: var(--uc-muted); font-size: 13px; max-width: 300px; }
+    #${APP_ID} .uc-welcome .uc-welcome-note { font-size: 12px; }
+    #${APP_ID} .uc-welcome-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    #${APP_ID} [hidden] { display: none !important; }
 
-    #${APP_ID} .iu-btn {
-      border: 1px solid var(--iu-line);
-      background: var(--iu-bg-2);
-      color: var(--iu-text);
+    #${APP_ID} .uc-btn {
+      border: 1px solid var(--uc-line);
+      background: var(--uc-bg-2);
+      color: var(--uc-text);
       padding: 8px 14px;
       border-radius: 8px;
       font-size: 13px;
       font-weight: 500;
       transition: background 0.15s, border-color 0.15s, transform 0.05s;
     }
-    #${APP_ID} .iu-btn:hover:not(:disabled) { background: var(--iu-bg-3); border-color: var(--iu-line-strong); }
-    #${APP_ID} .iu-btn:active:not(:disabled) { transform: scale(0.98); }
-    #${APP_ID} .iu-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    #${APP_ID} .iu-btn--primary { background: var(--iu-accent); border-color: var(--iu-accent); color: var(--iu-accent-ink); }
-    #${APP_ID} .iu-btn--primary:hover:not(:disabled) { background: var(--iu-accent-2); border-color: var(--iu-accent-2); }
-    #${APP_ID} .iu-btn--danger { background: var(--iu-danger); border-color: var(--iu-danger); color: #fff; }
-    #${APP_ID} .iu-btn--danger:hover:not(:disabled) { background: color-mix(in srgb, var(--iu-danger) 85%, white); border-color: color-mix(in srgb, var(--iu-danger) 85%, white); }
-    #${APP_ID} .iu-btn--ghost { background: transparent; }
-    #${APP_ID} .iu-btn--lg { padding: 10px 20px; font-size: 14px; margin-top: 8px; }
-    #${APP_ID} .iu-btn--small { padding: 6px 10px; font-size: 12px; }
+    #${APP_ID} .uc-btn:hover:not(:disabled) { background: var(--uc-bg-3); border-color: var(--uc-line-strong); }
+    #${APP_ID} .uc-btn:active:not(:disabled) { transform: scale(0.98); }
+    #${APP_ID} .uc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #${APP_ID} .uc-btn--primary { background: var(--uc-accent); border-color: var(--uc-accent); color: var(--uc-accent-ink); }
+    #${APP_ID} .uc-btn--primary:hover:not(:disabled) { background: var(--uc-accent-2); border-color: var(--uc-accent-2); }
+    #${APP_ID} .uc-btn--danger { background: var(--uc-danger); border-color: var(--uc-danger); color: #fff; }
+    #${APP_ID} .uc-btn--danger:hover:not(:disabled) { background: color-mix(in srgb, var(--uc-danger) 85%, white); border-color: color-mix(in srgb, var(--uc-danger) 85%, white); }
+    #${APP_ID} .uc-btn--ghost { background: transparent; }
+    #${APP_ID} .uc-btn--lg { padding: 10px 20px; font-size: 14px; margin-top: 8px; }
+    #${APP_ID} .uc-btn--small { padding: 6px 10px; font-size: 12px; }
 
-    #${APP_ID} .iu-progress { padding: 22px 20px; display: flex; flex-direction: column; gap: 14px; }
-    #${APP_ID} .iu-progress-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
-    #${APP_ID} .iu-progress-head p { margin: 4px 0 0; color: var(--iu-muted); font-size: 12px; min-height: 1em; }
-    #${APP_ID} .iu-bar {
+    #${APP_ID} .uc-progress { padding: 22px 20px; display: flex; flex-direction: column; gap: 14px; }
+    #${APP_ID} .uc-progress-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    #${APP_ID} .uc-progress-head p { margin: 4px 0 0; color: var(--uc-muted); font-size: 12px; min-height: 1em; }
+    #${APP_ID} .uc-bar {
       height: 6px;
       border-radius: 3px;
-      background: color-mix(in srgb, var(--iu-text) 8%, transparent);
+      background: color-mix(in srgb, var(--uc-text) 8%, transparent);
       overflow: hidden;
     }
-    #${APP_ID} .iu-bar > span {
+    #${APP_ID} .uc-bar > span {
       display: block;
       height: 100%;
-      background: var(--iu-accent);
+      background: var(--uc-accent);
       transition: width 0.3s ease;
     }
-    #${APP_ID} .iu-progress-meta {
+    #${APP_ID} .uc-progress-meta {
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 12px;
     }
-    #${APP_ID} .iu-progress-actions { display: flex; gap: 8px; }
-    #${APP_ID} .iu-current {
+    #${APP_ID} .uc-progress-actions { display: flex; gap: 8px; }
+    #${APP_ID} .uc-current {
       display: flex;
       align-items: center;
       gap: 8px;
       padding: 10px;
-      background: var(--iu-bg-2);
+      background: var(--uc-bg-2);
       border-radius: 8px;
       font-size: 12px;
     }
-    #${APP_ID} .iu-current strong { font-weight: 600; }
+    #${APP_ID} .uc-current strong { font-weight: 600; }
     /* Done state hugs its content (no fixed panel height), so the panel shrinks to
        fit the summary. A long list scrolls within its own max-height instead of
        growing the panel past the screen. */
-    #${APP_ID} .iu-progress--done { flex: 0 1 auto; min-height: 0; }
-    #${APP_ID} .iu-done-list {
+    #${APP_ID} .uc-progress--done { flex: 0 1 auto; min-height: 0; }
+    #${APP_ID} .uc-done-list {
       flex: 0 1 auto;
       max-height: 50vh;
       overflow-y: auto;
       overscroll-behavior: contain;
       margin: 0 -20px;
-      border-top: 1px solid var(--iu-line);
-      border-bottom: 1px solid var(--iu-line);
+      border-top: 1px solid var(--uc-line);
+      border-bottom: 1px solid var(--uc-line);
     }
-    #${APP_ID} .iu-done-section {
+    #${APP_ID} .uc-done-section {
       position: sticky;
       top: 0;
       padding: 8px 20px 4px;
-      background: var(--iu-bg);
+      background: var(--uc-bg);
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.03em;
-      color: var(--iu-muted);
+      color: var(--uc-muted);
     }
-    #${APP_ID} .iu-done-row {
+    #${APP_ID} .uc-done-row {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 6px 20px;
     }
-    #${APP_ID} .iu-avatar--sm { width: 28px; height: 28px; }
-    #${APP_ID} .iu-done-name {
+    #${APP_ID} .uc-avatar--sm { width: 28px; height: 28px; }
+    #${APP_ID} .uc-done-name {
       flex: 1 1 auto;
       min-width: 0;
       font-size: 13px;
       font-weight: 500;
-      color: var(--iu-text);
+      color: var(--uc-text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    #${APP_ID} .iu-done-name:hover { color: var(--iu-accent-2); }
-    #${APP_ID} .iu-warn {
+    #${APP_ID} .uc-done-name:hover { color: var(--uc-accent-2); }
+    #${APP_ID} .uc-warn {
       padding: 8px 10px;
       border-radius: 8px;
       font-size: 12px;
       line-height: 1.4;
-      background: color-mix(in srgb, var(--iu-danger) 14%, transparent);
-      border: 1px solid color-mix(in srgb, var(--iu-danger) 35%, transparent);
-      color: var(--iu-text);
+      background: color-mix(in srgb, var(--uc-danger) 14%, transparent);
+      border: 1px solid color-mix(in srgb, var(--uc-danger) 35%, transparent);
+      color: var(--uc-text);
     }
-    #${APP_ID} .iu-warn--soft {
-      background: color-mix(in srgb, var(--iu-accent) 12%, transparent);
-      border-color: color-mix(in srgb, var(--iu-accent) 30%, transparent);
-      color: var(--iu-text);
+    /* Results that aren't a fresh, complete scan (stopped partway / cached). */
+    #${APP_ID} .uc-notice {
+      flex-shrink: 0;
+      margin: 12px 16px 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.45;
+      background: color-mix(in srgb, var(--uc-accent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--uc-accent) 30%, transparent);
+    }
+    #${APP_ID} .uc-notice strong { display: block; margin-bottom: 2px; font-size: 13px; font-weight: 600; }
+    #${APP_ID} .uc-notice p { margin: 0; color: var(--uc-muted); }
+    #${APP_ID} .uc-notice .uc-notice-reason { margin-top: 4px; color: var(--uc-text); }
+    #${APP_ID} .uc-notice-actions { display: flex; gap: 8px; margin-top: 8px; }
+    #${APP_ID} .uc-live { font-size: 13px; font-weight: 600; color: var(--uc-accent-2); }
+    #${APP_ID} .uc-bar--indeterminate > span { width: 30% !important; animation: uc-slide 1.4s ease-in-out infinite; }
+    @keyframes uc-slide {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(340%); }
+    }
+    #${APP_ID} .uc-done-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+    #${APP_ID} .uc-done-reason {
+      font-size: 11px;
+      color: var(--uc-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #${APP_ID} .uc-warn--soft {
+      background: color-mix(in srgb, var(--uc-accent) 12%, transparent);
+      border-color: color-mix(in srgb, var(--uc-accent) 30%, transparent);
+      color: var(--uc-text);
     }
 
-    #${APP_ID} .iu-results {
+    #${APP_ID} .uc-results {
       flex: 1 1 auto;
       min-height: 0;
       display: flex;
       flex-direction: column;
     }
-    #${APP_ID} .iu-results-summary {
+    #${APP_ID} .uc-results-summary {
       padding: 12px 16px 4px;
       font-size: 13px;
-      color: var(--iu-muted);
+      color: var(--uc-muted);
     }
-    #${APP_ID} .iu-search-row {
+    #${APP_ID} .uc-search-row {
       padding: 8px 16px;
     }
-    #${APP_ID} .iu-search {
+    #${APP_ID} .uc-search {
       width: 100%;
       height: 36px;
       padding: 0 12px;
-      border: 1px solid var(--iu-line);
+      border: 1px solid var(--uc-line);
       border-radius: 8px;
-      background: var(--iu-bg-2);
-      color: var(--iu-text);
+      background: var(--uc-bg-2);
+      color: var(--uc-text);
       outline: none;
       transition: border-color 0.15s;
     }
-    #${APP_ID} .iu-search:focus { border-color: var(--iu-accent); }
+    #${APP_ID} .uc-search:focus { border-color: var(--uc-accent); }
     /* Replace the faint native clear (×) with a clearly-visible themed glyph that
        shows a pointer cursor and brightens on hover. */
-    #${APP_ID} .iu-search::-webkit-search-cancel-button {
+    #${APP_ID} .uc-search::-webkit-search-cancel-button {
       -webkit-appearance: none;
       appearance: none;
       width: 16px;
       height: 16px;
       cursor: pointer;
-      background-color: var(--iu-muted);
+      background-color: var(--uc-muted);
       -webkit-mask: no-repeat center / 12px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 4l8 8M12 4l-8 8' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
       mask: no-repeat center / 12px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 4l8 8M12 4l-8 8' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
       transition: background-color 0.15s;
     }
-    #${APP_ID} .iu-search::-webkit-search-cancel-button:hover { background-color: var(--iu-text); }
+    #${APP_ID} .uc-search::-webkit-search-cancel-button:hover { background-color: var(--uc-text); }
 
-    #${APP_ID} .iu-filters {
+    #${APP_ID} .uc-filters {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       padding: 0 16px 10px;
     }
-    #${APP_ID} .iu-chip {
+    #${APP_ID} .uc-chip {
       display: inline-flex;
       align-items: center;
       gap: 4px;
       padding: 4px 10px;
-      border: 1px solid var(--iu-line);
+      border: 1px solid var(--uc-line);
       border-radius: 999px;
       background: transparent;
-      color: var(--iu-muted);
+      color: var(--uc-muted);
       font-size: 12px;
       transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
-    #${APP_ID} .iu-chip:hover { border-color: var(--iu-line-strong); color: var(--iu-text); }
-    #${APP_ID} .iu-chip--on { background: color-mix(in srgb, var(--iu-accent) 12%, transparent); border-color: color-mix(in srgb, var(--iu-accent) 50%, transparent); color: var(--iu-accent-2); }
-    #${APP_ID} .iu-chip-tick { display: inline-grid; place-items: center; width: 12px; height: 12px; }
-    #${APP_ID} .iu-chip-tick svg { width: 12px; height: 12px; }
+    #${APP_ID} .uc-chip:hover { border-color: var(--uc-line-strong); color: var(--uc-text); }
+    #${APP_ID} .uc-chip--on { background: color-mix(in srgb, var(--uc-accent) 12%, transparent); border-color: color-mix(in srgb, var(--uc-accent) 50%, transparent); color: var(--uc-accent-2); }
+    #${APP_ID} .uc-chip-tick { display: inline-grid; place-items: center; width: 12px; height: 12px; }
+    #${APP_ID} .uc-chip-tick svg { width: 12px; height: 12px; }
 
-    #${APP_ID} .iu-list {
+    #${APP_ID} .uc-list {
       flex: 1 1 auto;
       min-height: 100px;
       overflow-y: auto;
       overscroll-behavior: contain;
-      border-top: 1px solid var(--iu-line);
-      border-bottom: 1px solid var(--iu-line);
+      border-top: 1px solid var(--uc-line);
+      border-bottom: 1px solid var(--uc-line);
     }
-    #${APP_ID} .iu-list-empty {
+    #${APP_ID} .uc-list-empty {
       padding: 30px 20px;
       text-align: center;
-      color: var(--iu-muted);
+      color: var(--uc-muted);
       font-size: 13px;
     }
-    #${APP_ID} .iu-row {
+    #${APP_ID} .uc-row {
       display: grid;
       grid-template-columns: 18px 36px 1fr auto;
       gap: 10px;
       padding: 8px 16px;
       align-items: center;
       cursor: pointer;
-      border-bottom: 1px solid var(--iu-line);
+      border-bottom: 1px solid var(--uc-line);
       transition: background 0.1s;
     }
-    #${APP_ID} .iu-row:hover { background: color-mix(in srgb, var(--iu-text) 4%, transparent); }
-    #${APP_ID} .iu-row:focus-visible { outline: none; background: color-mix(in srgb, var(--iu-accent) 6%, transparent); }
-    #${APP_ID} .iu-row--selected { background: color-mix(in srgb, var(--iu-accent) 8%, transparent); }
-    #${APP_ID} .iu-row--selected:hover { background: color-mix(in srgb, var(--iu-accent) 12%, transparent); }
-    #${APP_ID} .iu-row:last-child { border-bottom: none; }
-    #${APP_ID} .iu-row--hidden { opacity: 0.55; }
-    #${APP_ID} .iu-row-check {
+    #${APP_ID} .uc-row:hover { background: color-mix(in srgb, var(--uc-text) 4%, transparent); }
+    #${APP_ID} .uc-row:focus-visible { outline: none; background: color-mix(in srgb, var(--uc-accent) 6%, transparent); }
+    #${APP_ID} .uc-row--selected { background: color-mix(in srgb, var(--uc-accent) 8%, transparent); }
+    #${APP_ID} .uc-row--selected:hover { background: color-mix(in srgb, var(--uc-accent) 12%, transparent); }
+    #${APP_ID} .uc-row:last-child { border-bottom: none; }
+    #${APP_ID} .uc-row--hidden { opacity: 0.55; }
+    #${APP_ID} .uc-row-check {
       width: 16px;
       height: 16px;
-      accent-color: var(--iu-accent);
+      accent-color: var(--uc-accent);
       cursor: pointer;
       margin: 0;
     }
-    #${APP_ID} .iu-avatar {
+    #${APP_ID} .uc-avatar {
       width: 36px;
       height: 36px;
       border-radius: 50%;
       object-fit: cover;
-      background: var(--iu-bg-3);
+      background: var(--uc-bg-3);
     }
-    #${APP_ID} .iu-row-text { min-width: 0; }
-    #${APP_ID} .iu-row-name {
+    #${APP_ID} .uc-row-text { min-width: 0; }
+    #${APP_ID} .uc-row-name {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -2235,21 +3090,21 @@
       font-size: 13px;
       font-weight: 500;
     }
-    #${APP_ID} .iu-row-name a { color: var(--iu-text); }
-    #${APP_ID} .iu-row-name a:hover { color: var(--iu-accent-2); }
-    #${APP_ID} .iu-row-sub {
+    #${APP_ID} .uc-row-name a { color: var(--uc-text); }
+    #${APP_ID} .uc-row-name a:hover { color: var(--uc-accent-2); }
+    #${APP_ID} .uc-row-sub {
       font-size: 12px;
-      color: var(--iu-muted);
+      color: var(--uc-muted);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    #${APP_ID} .iu-row-actions {
+    #${APP_ID} .uc-row-actions {
       display: flex;
       gap: 4px;
       align-items: center;
     }
-    #${APP_ID} .iu-icon-btn {
+    #${APP_ID} .uc-icon-btn {
       display: inline-grid;
       place-items: center;
       width: 28px;
@@ -2257,33 +3112,33 @@
       border-radius: 6px;
       border: none;
       background: transparent;
-      color: var(--iu-muted);
+      color: var(--uc-muted);
       transition: background 0.15s, color 0.15s;
     }
-    #${APP_ID} .iu-icon-btn:hover { background: var(--iu-bg-2); color: var(--iu-text); }
-    #${APP_ID} .iu-text-btn {
+    #${APP_ID} .uc-icon-btn:hover { background: var(--uc-bg-2); color: var(--uc-text); }
+    #${APP_ID} .uc-text-btn {
       width: auto;
       padding: 0 8px;
       font-size: 11px;
       font-weight: 500;
     }
-    #${APP_ID} .iu-tag {
+    #${APP_ID} .uc-tag {
       display: inline-flex;
       align-items: center;
       padding: 1px 6px;
       border-radius: 4px;
       font-size: 10px;
       font-weight: 600;
-      background: color-mix(in srgb, var(--iu-text) 8%, transparent);
-      color: var(--iu-muted);
+      background: color-mix(in srgb, var(--uc-text) 8%, transparent);
+      color: var(--uc-muted);
       letter-spacing: 0.02em;
       text-transform: uppercase;
     }
-    #${APP_ID} .iu-tag--brand { background: color-mix(in srgb, var(--iu-accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--iu-accent) 30%, transparent); color: var(--iu-accent-2); }
-    #${APP_ID} .iu-tag--green { background: color-mix(in srgb, var(--iu-success) 15%, transparent); color: var(--iu-success); }
-    #${APP_ID} .iu-tag--red { background: color-mix(in srgb, var(--iu-danger) 15%, transparent); color: var(--iu-danger); }
+    #${APP_ID} .uc-tag--brand { background: color-mix(in srgb, var(--uc-accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--uc-accent) 30%, transparent); color: var(--uc-accent-2); }
+    #${APP_ID} .uc-tag--green { background: color-mix(in srgb, var(--uc-success) 15%, transparent); color: var(--uc-success); }
+    #${APP_ID} .uc-tag--red { background: color-mix(in srgb, var(--uc-danger) 15%, transparent); color: var(--uc-danger); }
 
-    #${APP_ID} .iu-actionbar {
+    #${APP_ID} .uc-actionbar {
       flex-shrink: 0;
       display: flex;
       flex-wrap: wrap;
@@ -2291,21 +3146,21 @@
       align-items: center;
       gap: 8px;
       padding: 10px 16px;
-      background: var(--iu-bg);
-      border-top: 1px solid var(--iu-line);
+      background: var(--uc-bg);
+      border-top: 1px solid var(--uc-line);
     }
-    #${APP_ID} .iu-actionbar-left,
-    #${APP_ID} .iu-actionbar-right {
+    #${APP_ID} .uc-actionbar-left,
+    #${APP_ID} .uc-actionbar-right {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 8px;
       min-width: 0;
     }
-    #${APP_ID} .iu-select-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    #${APP_ID} .iu-muted { color: var(--iu-muted); font-size: 12px; }
+    #${APP_ID} .uc-select-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    #${APP_ID} .uc-muted { color: var(--uc-muted); font-size: 12px; }
 
-    #${APP_ID} .iu-overlay {
+    #${APP_ID} .uc-overlay {
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.55);
@@ -2314,56 +3169,56 @@
       padding: 20px;
       z-index: 1;
     }
-    #${APP_ID} .iu-dialog {
+    #${APP_ID} .uc-dialog {
       width: 100%;
       max-width: 380px;
-      background: var(--iu-bg);
-      border: 1px solid var(--iu-line);
+      background: var(--uc-bg);
+      border: 1px solid var(--uc-line);
       border-radius: 12px;
       padding: 18px;
       box-shadow: 0 30px 80px rgba(0,0,0,0.55);
     }
-    #${APP_ID} .iu-dialog h3 { margin: 0 0 8px; font-size: 16px; }
-    #${APP_ID} .iu-dialog p { margin: 0 0 14px; color: var(--iu-muted); font-size: 13px; }
-    #${APP_ID} .iu-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-    #${APP_ID} .iu-dialog-actions [data-extra] { margin-right: auto; }
-    #${APP_ID} .iu-form { display: grid; gap: 8px; max-height: 50vh; overflow-y: auto; padding-right: 4px; }
-    #${APP_ID} .iu-field { display: grid; grid-template-columns: 1fr 110px; align-items: center; gap: 10px; font-size: 12px; color: var(--iu-muted); }
-    #${APP_ID} .iu-field input {
+    #${APP_ID} .uc-dialog h3 { margin: 0 0 8px; font-size: 16px; }
+    #${APP_ID} .uc-dialog p { margin: 0 0 14px; color: var(--uc-muted); font-size: 13px; }
+    #${APP_ID} .uc-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+    #${APP_ID} .uc-dialog-actions [data-extra] { margin-right: auto; }
+    #${APP_ID} .uc-form { display: grid; gap: 8px; max-height: 50vh; overflow-y: auto; padding-right: 4px; }
+    #${APP_ID} .uc-field { display: grid; grid-template-columns: 1fr 110px; align-items: center; gap: 10px; font-size: 12px; color: var(--uc-muted); }
+    #${APP_ID} .uc-field input {
       height: 32px;
       padding: 0 10px;
-      border: 1px solid var(--iu-line);
+      border: 1px solid var(--uc-line);
       border-radius: 6px;
-      background: var(--iu-bg-2);
-      color: var(--iu-text);
+      background: var(--uc-bg-2);
+      color: var(--uc-text);
       outline: none;
     }
-    #${APP_ID} .iu-field input:focus { border-color: var(--iu-accent); }
+    #${APP_ID} .uc-field input:focus { border-color: var(--uc-accent); }
 
-    #${APP_ID} .iu-toast {
+    #${APP_ID} .uc-toast {
       position: absolute;
       left: 50%;
       bottom: 12px;
       transform: translateX(-50%);
       padding: 8px 14px;
-      background: var(--iu-bg-2);
-      border: 1px solid var(--iu-line);
+      background: var(--uc-bg-2);
+      border: 1px solid var(--uc-line);
       border-radius: 999px;
       font-size: 12px;
       box-shadow: 0 6px 20px rgba(0,0,0,0.35);
       pointer-events: none;
-      animation: iu-pop 0.18s ease-out;
+      animation: uc-pop 0.18s ease-out;
     }
 
-    #${APP_ID} .iu-pill {
+    #${APP_ID} .uc-pill {
       position: absolute;
       display: inline-flex;
       align-items: center;
       gap: 8px;
       padding: 8px 14px;
-      background: var(--iu-bg);
-      border: 1px solid var(--iu-line);
-      color: var(--iu-text);
+      background: var(--uc-bg);
+      border: 1px solid var(--uc-line);
+      color: var(--uc-text);
       border-radius: 999px;
       box-shadow: 0 12px 30px rgba(0,0,0,0.4);
       font-size: 12px;
@@ -2371,22 +3226,22 @@
       transition: background 0.15s;
       cursor: pointer;
     }
-    #${APP_ID} .iu-pill:hover { background: var(--iu-bg-2); }
-    #${APP_ID} .iu-pill-dot {
+    #${APP_ID} .uc-pill:hover { background: var(--uc-bg-2); }
+    #${APP_ID} .uc-pill-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--iu-muted);
+      background: var(--uc-muted);
     }
-    #${APP_ID} .iu-pill-dot--active { background: var(--iu-accent); animation: iu-pulse 1.4s infinite; }
-    #${APP_ID} .iu-pill-dot--error { background: var(--iu-danger); }
-    @keyframes iu-pulse {
+    #${APP_ID} .uc-pill-dot--active { background: var(--uc-accent); animation: uc-pulse 1.4s infinite; }
+    #${APP_ID} .uc-pill-dot--error { background: var(--uc-danger); }
+    @keyframes uc-pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
     }
 
     @media (max-width: 480px) {
-      #${APP_ID} .iu-panel {
+      #${APP_ID} .uc-panel {
         width: calc(100vw - 16px) !important;
         max-height: calc(100vh - 16px) !important;
         left: 8px !important;
@@ -2394,7 +3249,7 @@
         top: 8px !important;
         bottom: 8px !important;
       }
-      #${APP_ID} .iu-list { max-height: none; flex: 1 1 auto; }
+      #${APP_ID} .uc-list { max-height: none; flex: 1 1 auto; }
     }
   `;
 
