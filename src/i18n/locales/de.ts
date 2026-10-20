@@ -6,6 +6,7 @@ export const de: Translation = {
     title: 'Unfollower-Checker',
     subtitle:
       'Finde heraus, wem du folgst, der dir nicht zurückfolgt — auf den Plattformen, die du nutzt.',
+    instagramFixed: 'Repariert – läuft wieder!',
   },
 
   selector: {

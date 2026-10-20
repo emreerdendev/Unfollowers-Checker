@@ -4,6 +4,7 @@ export const en = {
     title: 'Unfollowers Checker',
     subtitle:
       "Find out who you follow that doesn't follow you back — across the platforms you use.",
+    instagramFixed: 'Fixed — working again!',
   },
 
   selector: {

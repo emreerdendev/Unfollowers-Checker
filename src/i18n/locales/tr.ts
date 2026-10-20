@@ -6,6 +6,7 @@ export const tr: Translation = {
     title: 'Takip Etmeyenler',
     subtitle:
       'Kullandığın platformlarda, takip ettiğin ama seni geri takip etmeyenleri öğren.',
+    instagramFixed: 'Düzeltildi, yeniden çalışıyor!',
   },
 
   selector: {

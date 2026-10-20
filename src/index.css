@@ -23,6 +23,32 @@
       opacity: 1;
     }
   }
+
+  /* Attention wiggle for the "working again" badge: a quick shake, then rest */
+  --animate-wiggle: wiggle 2s ease-in-out infinite;
+
+  @keyframes wiggle {
+    0%,
+    60%,
+    100% {
+      transform: rotate(0deg) scale(1);
+    }
+    66% {
+      transform: rotate(-4deg) scale(1.05);
+    }
+    72% {
+      transform: rotate(4deg) scale(1.05);
+    }
+    78% {
+      transform: rotate(-3deg) scale(1.03);
+    }
+    84% {
+      transform: rotate(2deg) scale(1.01);
+    }
+    90% {
+      transform: rotate(0deg) scale(1);
+    }
+  }
 }
 
 /* Colour tokens resolve to CSS variables so they can swap per theme. */

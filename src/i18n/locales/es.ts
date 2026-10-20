@@ -6,6 +6,7 @@ export const es: Translation = {
     title: 'Comprobador de seguidores',
     subtitle:
       'Descubre a quién sigues que no te sigue de vuelta — en las plataformas que usas.',
+    instagramFixed: '¡Arreglado, funciona otra vez!',
   },
 
   selector: {

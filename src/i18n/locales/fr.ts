@@ -6,6 +6,7 @@ export const fr: Translation = {
     title: 'Vérificateur d’abonnements',
     subtitle:
       'Découvrez qui vous suivez sans être suivi en retour — sur les plateformes que vous utilisez.',
+    instagramFixed: 'Corrigé, ça remarche !',
   },
 
   selector: {
