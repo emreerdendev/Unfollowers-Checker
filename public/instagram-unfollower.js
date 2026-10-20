@@ -13,10 +13,7 @@
 
   const APP_ID = "uc-app";
   const STYLE_ID = "uc-style";
-  const STORAGE_KEY = "uc_prefs_v1";
-  // Preferences saved by earlier versions of this panel; read once as a fallback
-  // so updating the script doesn't reset the user's settings/layout.
-  const LEGACY_STORAGE_KEY = "iu_state_v3";
+  const STORAGE_KEY = "uc_prefs_v2";
   // An interrupted scan is saved here so it can resume where it stopped.
   const CHECKPOINT_KEY = "uc_scan_checkpoint_v1";
   // The non-followers of the last completed scan (shown again without rescanning).
@@ -60,9 +57,11 @@
   // Ordered list of supported languages; the header button cycles through them.
   const LANGS = ["en", "tr", "de", "fr", "es"];
 
-  const PANEL_WIDTH = 500;
-  const PANEL_MIN_WIDTH = 320;
-  const PANEL_MIN_HEIGHT = 320;
+  // The panel is a desktop tool (DevTools console), so it opens roomy and can't
+  // be resized below a usable size — unless the window itself is smaller.
+  const PANEL_WIDTH = 650;
+  const PANEL_MIN_WIDTH = 650;
+  const PANEL_MIN_HEIGHT = 350;
   const PANEL_MARGIN = 18;
   const MAX_RETRIES = 3;
   // A 429 during the scan is waited out this many times (30s, 60s, …) before
@@ -159,6 +158,10 @@
       pillUnfollowing: "Unfollowing {current}/{total}",
       pillResults: "{count} non-followers",
       pillIdle: "Open",
+      closeConfirmTitle: "Close the panel?",
+      closeConfirmResults: "The list will be closed. Paste the script again to reopen it with “Show last result”.",
+      closeConfirmScanning: "The scan stops now. Your progress is saved, so you can resume it after pasting the script again.",
+      closeConfirmUnfollowing: "Unfollowing stops now. Accounts already unfollowed stay unfollowed.",
       scanNotice: "Large accounts can take a while. If Instagram interrupts the scan, your progress is saved — wait a bit, then resume instead of starting over.",
       countFollowers: "{current} followers loaded",
       countFollowing: "{current} accounts checked",
@@ -271,6 +274,10 @@
       pillUnfollowing: "Bırakılıyor {current}/{total}",
       pillResults: "{count} takip etmeyen",
       pillIdle: "Aç",
+      closeConfirmTitle: "Panel kapatılsın mı?",
+      closeConfirmResults: "Liste kapanacak. Tekrar açmak için kodu yeniden yapıştırıp “Son sonucu göster”e bas.",
+      closeConfirmScanning: "Tarama şimdi durur. İlerlemen kaydedildi; kodu yeniden yapıştırıp kaldığı yerden devam edebilirsin.",
+      closeConfirmUnfollowing: "Takip bırakma şimdi durur. Takibi bırakılan hesaplar öyle kalır.",
       scanNotice: "Büyük hesaplarda tarama biraz sürebilir. Instagram taramayı keserse ilerlemen kaydedilir — baştan başlamak yerine biraz bekleyip devam et.",
       countFollowers: "{current} takipçi yüklendi",
       countFollowing: "{current} hesap kontrol edildi",
@@ -383,6 +390,10 @@
       pillUnfollowing: "Entfolgen {current}/{total}",
       pillResults: "{count} Nicht-Follower",
       pillIdle: "Öffnen",
+      closeConfirmTitle: "Panel schließen?",
+      closeConfirmResults: "Die Liste wird geschlossen. Füge das Skript erneut ein und öffne sie mit „Letztes Ergebnis zeigen“.",
+      closeConfirmScanning: "Der Scan stoppt jetzt. Dein Fortschritt ist gespeichert, du kannst nach erneutem Einfügen fortsetzen.",
+      closeConfirmUnfollowing: "Das Entfolgen stoppt jetzt. Bereits entfolgte Konten bleiben entfolgt.",
       scanNotice: "Große Konten können etwas dauern. Unterbricht Instagram den Scan, bleibt dein Fortschritt gespeichert — warte kurz und setze dann fort, statt neu zu beginnen.",
       countFollowers: "{current} Follower geladen",
       countFollowing: "{current} Konten geprüft",
@@ -495,6 +506,10 @@
       pillUnfollowing: "Désabonnement {current}/{total}",
       pillResults: "{count} non-abonnés",
       pillIdle: "Ouvrir",
+      closeConfirmTitle: "Fermer le panneau ?",
+      closeConfirmResults: "La liste sera fermée. Collez à nouveau le script et rouvrez-la avec « Afficher le dernier résultat ».",
+      closeConfirmScanning: "L'analyse s'arrête maintenant. Votre progression est enregistrée ; vous pourrez reprendre après avoir recollé le script.",
+      closeConfirmUnfollowing: "Le désabonnement s'arrête maintenant. Les comptes déjà désabonnés le restent.",
       scanNotice: "Les grands comptes peuvent prendre du temps. Si Instagram interrompt l'analyse, votre progression est enregistrée — patientez un peu puis reprenez au lieu de recommencer.",
       countFollowers: "{current} abonnés chargés",
       countFollowing: "{current} comptes vérifiés",
@@ -607,6 +622,10 @@
       pillUnfollowing: "Dejando de seguir {current}/{total}",
       pillResults: "{count} no seguidores",
       pillIdle: "Abrir",
+      closeConfirmTitle: "¿Cerrar el panel?",
+      closeConfirmResults: "La lista se cerrará. Pega el script otra vez y ábrela con “Ver el último resultado”.",
+      closeConfirmScanning: "El análisis se detiene ahora. Tu progreso está guardado; podrás reanudarlo al pegar el script otra vez.",
+      closeConfirmUnfollowing: "Dejar de seguir se detiene ahora. Las cuentas que ya dejaste de seguir siguen así.",
       scanNotice: "Las cuentas grandes pueden tardar. Si Instagram interrumpe el análisis, tu progreso se guarda — espera un poco y reanuda en lugar de empezar de nuevo.",
       countFollowers: "{current} seguidores cargados",
       countFollowing: "{current} cuentas comprobadas",
@@ -718,10 +737,8 @@
   }
 
   function loadStored() {
-    const current = readJSON(STORAGE_KEY);
-    if (current && typeof current === "object") return current;
-    const legacy = readJSON(LEGACY_STORAGE_KEY);
-    return legacy && typeof legacy === "object" ? legacy : {};
+    const saved = readJSON(STORAGE_KEY);
+    return saved && typeof saved === "object" ? saved : {};
   }
 
   // Merge saved timings over the defaults, dropping anything that isn't a sane
@@ -891,6 +908,25 @@
     if (window.__ucCleanup === unmount) window.__ucCleanup = null;
   }
 
+  // Closing throws away the on-screen list (and stops a running scan/unfollow),
+  // so ask first whenever there's something to lose. Idle/done views close at once.
+  function requestClose() {
+    const running = state.mode === "scanning" || state.mode === "unfollowing";
+    const hasResults = state.mode === "results" && state.users.length > 0;
+    if (!running && !hasResults) return unmount();
+    const bodyKey = {
+      scanning: "closeConfirmScanning",
+      unfollowing: "closeConfirmUnfollowing"
+    }[state.mode] || "closeConfirmResults";
+    showDialog({
+      title: t("closeConfirmTitle"),
+      body: t(bodyKey),
+      confirmLabel: t("close"),
+      destructive: true,
+      onConfirm: unmount
+    });
+  }
+
   // Browsers heavily throttle timers in background tabs, so a scan in a hidden
   // tab crawls. Surface that instead of looking stuck.
   function visibilityNote() {
@@ -966,7 +1002,7 @@
   }
 
   function bindHeader(root) {
-    root.querySelector("[data-action='close']")?.addEventListener("click", () => unmount());
+    root.querySelector("[data-action='close']")?.addEventListener("click", requestClose);
     root.querySelector("[data-action='minimize']")?.addEventListener("click", () => setMinimized(true));
     root.querySelector("[data-action='settings']")?.addEventListener("click", showSettings);
     root.querySelector("[data-action='theme']")?.addEventListener("click", cycleTheme);
@@ -986,17 +1022,25 @@
     const node = document.querySelector(`#${APP_ID} .uc-panel`);
     if (!node) return;
     if (state.panelSize) {
-      const maxW = Math.max(PANEL_MIN_WIDTH, window.innerWidth - 16);
-      node.style.width = clamp(state.panelSize.w, PANEL_MIN_WIDTH, maxW) + "px";
+      const maxW = Math.max(minPanelWidth(), window.innerWidth - 16);
+      node.style.width = clamp(state.panelSize.w, minPanelWidth(), maxW) + "px";
       if (modeUsesFixedHeight()) {
-        const maxH = Math.max(PANEL_MIN_HEIGHT, window.innerHeight - 16);
-        node.style.height = clamp(state.panelSize.h, PANEL_MIN_HEIGHT, maxH) + "px";
+        const maxH = Math.max(minPanelHeight(), window.innerHeight - 16);
+        node.style.height = clamp(state.panelSize.h, minPanelHeight(), maxH) + "px";
       } else {
         node.style.height = "auto";
       }
     } else {
       node.style.height = "auto";
     }
+  }
+
+  function minPanelWidth() {
+    return Math.min(PANEL_MIN_WIDTH, window.innerWidth - 16);
+  }
+
+  function minPanelHeight() {
+    return Math.min(PANEL_MIN_HEIGHT, window.innerHeight - 16);
   }
 
   function applyPanelPosition() {
@@ -1107,18 +1151,20 @@
         if (!resizing) return;
         const dx = event.clientX - startX;
         const dy = event.clientY - startY;
-        const maxW = Math.max(PANEL_MIN_WIDTH, window.innerWidth - 8);
-        const maxH = Math.max(PANEL_MIN_HEIGHT, window.innerHeight - 8);
+        const minW = minPanelWidth();
+        const minH = minPanelHeight();
+        const maxW = Math.max(minW, window.innerWidth - 8);
+        const maxH = Math.max(minH, window.innerHeight - 8);
         let w = w0, h = h0, left = x0, top = y0;
 
-        if (dir.includes("e")) w = clamp(w0 + dx, PANEL_MIN_WIDTH, maxW);
-        if (dir.includes("s")) h = clamp(h0 + dy, PANEL_MIN_HEIGHT, maxH);
+        if (dir.includes("e")) w = clamp(w0 + dx, minW, maxW);
+        if (dir.includes("s")) h = clamp(h0 + dy, minH, maxH);
         if (dir.includes("w")) {
-          w = clamp(w0 - dx, PANEL_MIN_WIDTH, Math.min(maxW, x0 + w0));
+          w = clamp(w0 - dx, minW, Math.min(maxW, x0 + w0));
           left = x0 + (w0 - w);
         }
         if (dir.includes("n")) {
-          h = clamp(h0 - dy, PANEL_MIN_HEIGHT, Math.min(maxH, y0 + h0));
+          h = clamp(h0 - dy, minH, Math.min(maxH, y0 + h0));
           top = y0 + (h0 - h);
         }
 
