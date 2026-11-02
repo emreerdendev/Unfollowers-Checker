@@ -729,7 +729,7 @@ const CenteredState = ({
     </div>
     <div className="space-y-1">
       <p className="font-medium text-fg">{title}</p>
-      <p className="max-w-md text-sm text-fg-muted">{description}</p>
+      <p className="max-w-lg text-sm text-fg-muted">{description}</p>
     </div>
     {footer}
   </div>
