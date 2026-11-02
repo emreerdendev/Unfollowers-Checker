@@ -37,64 +37,66 @@ export const Footer = () => {
     'inline-flex items-center gap-2 rounded-md px-2 py-1 outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-brand-400'
 
   return (
-    <footer className="mx-auto flex w-full max-w-3xl flex-col items-center gap-2 px-4 py-8 text-sm text-fg-muted sm:px-6">
-      {/* Row 1 — how to reach the author (contact + personal site). */}
-      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-        <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
-          <Mail className="h-4 w-4" aria-hidden="true" />
-          <span>{t('footer.contact', { email: CONTACT_EMAIL })}</span>
-        </a>
+    <footer className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-fg-muted sm:px-6">
+      <div className="flex flex-col items-center gap-4 rounded-card border border-border bg-surface/40 px-4 py-6 sm:px-8">
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            onClick={() => setPrivacyOpen(true)}
+            className={`cursor-pointer ${linkClass}`}
+          >
+            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+            <span>{t('footer.privacy')}</span>
+          </button>
 
-        <Dot />
+          <p className="max-w-md text-center text-xs text-fg-muted/80">
+            {t('footer.disclaimer')}
+          </p>
+        </div>
 
-        <a href={SITE_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
-          <Globe className="h-4 w-4" aria-hidden="true" />
-          <span>emreerden.dev</span>
-        </a>
+        <hr className="w-full max-w-md border-border" />
+
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+            <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
+              <Mail className="h-4 w-4" aria-hidden="true" />
+              <span>{t('footer.contact', { email: CONTACT_EMAIL })}</span>
+            </a>
+
+            <Dot />
+
+            <a href={SITE_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
+              <Globe className="h-4 w-4" aria-hidden="true" />
+              <span>emreerden.dev</span>
+            </a>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+            <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className={`text-brand-400 ${linkClass}`}>
+              <GithubIcon />
+              <span>{t('footer.viewSource')}</span>
+            </a>
+
+            <Dot />
+
+            <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
+              <CircleDot className="h-4 w-4" aria-hidden="true" />
+              <span>{t('footer.reportIssue')}</span>
+            </a>
+
+            <Dot />
+
+            <a
+              href={SPONSOR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-brand-500/30 bg-brand-500/10 px-2.5 py-1 font-medium text-brand-400 outline-none transition-colors hover:bg-brand-500/20 hover:text-brand-300 focus-visible:ring-2 focus-visible:ring-brand-400"
+            >
+              <Heart className="h-4 w-4 fill-current" aria-hidden="true" />
+              <span>{t('footer.sponsor')}</span>
+            </a>
+          </div>
+        </div>
       </div>
-
-      {/* Row 2 — project links: source, privacy, issue tracker, sponsor. */}
-      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-        <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className={`text-brand-400 focus-visible:ring-2 focus-visible:ring-brand-400' ${linkClass}`}>
-          <GithubIcon />
-          <span>{t('footer.viewSource')}</span>
-        </a>
-
-        <Dot />
-
-        <button
-          onClick={() => setPrivacyOpen(true)}
-          className={`cursor-pointer ${linkClass}`}
-        >
-          <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-          <span>{t('footer.privacy')}</span>
-        </button>
-
-        <Dot />
-
-        <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
-          <CircleDot className="h-4 w-4" aria-hidden="true" />
-          <span>{t('footer.reportIssue')}</span>
-        </a>
-
-        <Dot />
-
-        {/* Sponsor is the one link we want to stand out — a brand-colored badge,
-            while the others stay muted so the emphasis lands in a single place. */}
-        <a
-          href={SPONSOR_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border border-brand-500/30 bg-brand-500/10 px-2.5 py-1 font-medium text-brand-400 outline-none transition-colors hover:bg-brand-500/20 hover:text-brand-300 focus-visible:ring-2 focus-visible:ring-brand-400"
-        >
-          <Heart className="h-4 w-4 fill-current" aria-hidden="true" />
-          <span>{t('footer.sponsor')}</span>
-        </a>
-      </div>
-
-      <p className="max-w-md text-center text-xs text-fg-muted/80">
-        {t('footer.disclaimer')}
-      </p>
 
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
     </footer>
