@@ -139,7 +139,8 @@ export const fr: Translation = {
 
   footer: {
     viewSource: 'Ajouter une étoile sur GitHub',
-    sponsor: 'Faire un don',
+    support: 'Soutenir',
+    discord: 'Rejoins notre communauté Discord !',
     privacy: 'Confidentialité',
     contact: '{{email}}',
     reportIssue: 'Signaler un problème',

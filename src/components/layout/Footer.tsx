@@ -2,16 +2,24 @@ import { useState } from 'react'
 import { Globe, ShieldCheck, Heart, Mail, CircleDot } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PrivacyDialog } from './PrivacyDialog'
+import { DiscordIcon } from '../ui/BrandIcons'
 
 const REPO_URL = 'https://github.com/emreerdendev/Unfollowers-Checker'
-const ISSUES_URL =
-  'https://github.com/emreerdendev/Unfollowers-Checker/issues'
+const ISSUES_URL = 'https://github.com/emreerdendev/Unfollowers-Checker/issues'
 const SITE_URL = 'https://emreerden.dev'
 const SPONSOR_URL = 'https://github.com/sponsors/emreerdendev'
 const CONTACT_EMAIL = 'emreerden@pm.me'
+const DISCORD_URL = 'https://discord.gg/2C8pYMVAw5'
+/** PSIBS! — Product, Startup, Indie, Build, Software! */
+const COMMUNITY_NAME = 'PSIBS!'
+const COMMUNITY_FULL_NAME = 'Product, Startup, Indie, Build, Software'
+const COFFEE_URL = 'https://www.buymeacoffee.com/emreerdendev'
+const COFFEE_BUTTON_IMG =
+  'https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png'
 
+/** Separator between items in a row; rows stack on phones, where it's hidden. */
 const Dot = () => (
-  <span aria-hidden="true" className="text-border">
+  <span aria-hidden="true" className="text-border hidden sm:inline">
     •
   </span>
 )
@@ -36,9 +44,13 @@ export const Footer = () => {
   const linkClass =
     'inline-flex items-center gap-2 rounded-md px-2 py-1 outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-brand-400'
 
+  const rowClass =
+    'flex flex-col items-center justify-center gap-x-2 gap-y-2 sm:flex-row sm:flex-wrap'
+
   return (
-    <footer className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-fg-muted sm:px-6">
-      <div className="flex flex-col items-center gap-4 rounded-card border border-border bg-surface/40 px-4 py-6 sm:px-8">
+    <footer className="text-fg-muted mx-auto w-full max-w-3xl px-4 py-8 text-sm sm:px-6">
+      <div className="rounded-card border-border bg-surface/40 flex flex-col items-center gap-4 border px-4 py-6 sm:px-8">
+        {/* Top — privacy, the legal fine print and the project's own links. */}
         <div className="flex flex-col items-center gap-1.5">
           <button
             onClick={() => setPrivacyOpen(true)}
@@ -48,53 +60,105 @@ export const Footer = () => {
             <span>{t('footer.privacy')}</span>
           </button>
 
-          <p className="max-w-md text-center text-xs text-fg-muted/80">
+          <p className="text-fg-muted/80 max-w-md text-center text-xs">
             {t('footer.disclaimer')}
           </p>
-        </div>
 
-        <hr className="w-full max-w-md border-border" />
-
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-            <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
-              <Mail className="h-4 w-4" aria-hidden="true" />
-              <span>{t('footer.contact', { email: CONTACT_EMAIL })}</span>
-            </a>
-
-            <Dot />
-
-            <a href={SITE_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
-              <Globe className="h-4 w-4" aria-hidden="true" />
-              <span>emreerden.dev</span>
-            </a>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-            <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className={`text-brand-400 ${linkClass}`}>
+          <div className={`mt-1 ${rowClass}`}>
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`text-brand-400 ${linkClass}`}
+            >
               <GithubIcon />
               <span>{t('footer.viewSource')}</span>
             </a>
 
             <Dot />
 
-            <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
+            <a
+              href={ISSUES_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClass}
+            >
               <CircleDot className="h-4 w-4" aria-hidden="true" />
               <span>{t('footer.reportIssue')}</span>
+            </a>
+          </div>
+        </div>
+
+        <hr className="border-border w-full max-w-md" />
+
+        {/* Bottom — the author: contact, community, support. */}
+        <div className="flex flex-col items-center gap-3">
+          <div className={rowClass}>
+            <a
+              href={SITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClass}
+            >
+              <Globe className="h-4 w-4" aria-hidden="true" />
+              <span>emreerden.dev</span>
+            </a>
+
+            <Dot />
+
+            <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
+              <Mail className="h-4 w-4" aria-hidden="true" />
+              <span>{t('footer.contact', { email: CONTACT_EMAIL })}</span>
+            </a>
+          </div>
+
+          {/* Support is the one link we want to stand out — a brand-colored badge,
+              next to Buy Me a Coffee's own button. */}
+          <div className={rowClass}>
+            <a
+              href={SPONSOR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border-brand-500/30 bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 hover:text-brand-300 focus-visible:ring-brand-400 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium transition-colors outline-none focus-visible:ring-2"
+            >
+              <Heart className="h-4 w-4 fill-current" aria-hidden="true" />
+              <span>{t('footer.support')}</span>
             </a>
 
             <Dot />
 
             <a
-              href={SPONSOR_URL}
+              href={COFFEE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-brand-500/30 bg-brand-500/10 px-2.5 py-1 font-medium text-brand-400 outline-none transition-colors hover:bg-brand-500/20 hover:text-brand-300 focus-visible:ring-2 focus-visible:ring-brand-400"
+              className="focus-visible:ring-brand-400 rounded-lg transition-opacity outline-none hover:opacity-90 focus-visible:ring-2"
             >
-              <Heart className="h-4 w-4 fill-current" aria-hidden="true" />
-              <span>{t('footer.sponsor')}</span>
+              <img
+                src={COFFEE_BUTTON_IMG}
+                alt="Buy Me a Coffee"
+                width={217}
+                height={60}
+                loading="lazy"
+                className="h-8 w-auto"
+              />
             </a>
           </div>
+
+          <a
+            href={DISCORD_URL}
+            title={`${COMMUNITY_NAME} — ${COMMUNITY_FULL_NAME}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="focus-visible:ring-brand-400 focus-visible:ring-offset-bg inline-flex items-center gap-3 rounded-lg bg-[#5865F2] px-4 py-2 text-left text-white shadow-sm transition-colors outline-none hover:bg-[#4752C4] focus-visible:ring-2 focus-visible:ring-offset-2"
+          >
+            <DiscordIcon className="h-6 w-6 shrink-0" />
+            <span className="flex flex-col leading-tight">
+              <span className="text-[11px] font-semibold tracking-wider text-white/75 uppercase">
+                {COMMUNITY_NAME}
+              </span>
+              <span className="font-medium">{t('footer.discord')}</span>
+            </span>
+          </a>
         </div>
       </div>
 

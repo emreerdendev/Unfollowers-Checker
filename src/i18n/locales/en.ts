@@ -137,7 +137,8 @@ export const en = {
 
   footer: {
     viewSource: 'Star on GitHub',
-    sponsor: 'Sponsor',
+    support: 'Support',
+    discord: 'Join our Discord community',
     privacy: 'Privacy',
     contact: '{{email}}',
     reportIssue: 'Report an issue',

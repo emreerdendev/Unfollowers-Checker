@@ -62,6 +62,21 @@ export const PlatformSelector = ({ value, onChange }: PlatformSelectorProps) => 
     }
   }, [])
 
+  // Keep the active tab in view on narrow screens (e.g. Instagram/X restored
+  // on load). Scrolls only the bar, never the page.
+  useEffect(() => {
+    const el = scrollRef.current
+    const tab = el?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!el || !tab) return
+    const pad = 24
+    const left = tab.offsetLeft - el.offsetLeft
+    const right = left + tab.offsetWidth
+    if (left - pad < el.scrollLeft) el.scrollLeft = Math.max(0, left - pad)
+    else if (right + pad > el.scrollLeft + el.clientWidth)
+      el.scrollLeft = right + pad - el.clientWidth
+    updateEdges()
+  }, [value])
+
   const mask = edgeMask(edges.left, edges.right)
 
   return (

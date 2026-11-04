@@ -140,7 +140,8 @@ export const de: Translation = {
 
   footer: {
     viewSource: 'Auf GitHub favorisieren',
-    sponsor: 'Unterstützen',
+    support: 'Unterstützen',
+    discord: 'Tritt unserer Discord-Community bei!',
     privacy: 'Datenschutz',
     contact: '{{email}}',
     reportIssue: 'Problem melden',

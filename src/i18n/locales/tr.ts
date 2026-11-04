@@ -139,7 +139,8 @@ export const tr: Translation = {
 
   footer: {
     viewSource: 'GitHub’da yıldızla',
-    sponsor: 'Destek ol',
+    support: 'Destek ol',
+    discord: 'Discord topluluğumuza katıl!',
     privacy: 'Gizlilik',
     contact: '{{email}}',
     reportIssue: 'Sorun bildir',

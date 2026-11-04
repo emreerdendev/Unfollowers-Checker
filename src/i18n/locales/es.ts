@@ -139,7 +139,8 @@ export const es: Translation = {
 
   footer: {
     viewSource: 'Dale una estrella en GitHub',
-    sponsor: 'Apóyame',
+    support: 'Apóyame',
+    discord: '¡Únete a nuestra comunidad de Discord!',
     privacy: 'Privacidad',
     contact: '{{email}}',
     reportIssue: 'Informar de un problema',

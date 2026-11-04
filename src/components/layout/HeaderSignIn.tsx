@@ -130,10 +130,12 @@ const BlueskyHeaderSignIn = () => {
         <span className="sm:hidden">{t('auth.signIn')}</span>
       </button>
 
+      {/* Phones: pinned to the viewport edges, since the button isn't the
+          rightmost header item and a right-aligned w-72 would spill off-screen. */}
       {open && (
         <form
           onSubmit={submit}
-          className="absolute right-0 z-20 mt-1 w-72 space-y-2 rounded-lg border border-border bg-surface p-3 shadow-lg shadow-black/30"
+          className="fixed inset-x-4 top-14 z-20 space-y-2 sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-1 sm:w-72 rounded-lg border border-border bg-surface p-3 shadow-lg shadow-black/30"
         >
           <p className="text-xs text-fg-muted">{t('results.signInNote')}</p>
           <input
