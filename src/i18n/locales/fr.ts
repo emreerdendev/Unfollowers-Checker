@@ -81,8 +81,6 @@ export const fr: Translation = {
     copyFailed: 'Impossible de copier dans le presse-papiers',
     openOn: 'Ouvrir {{handle}} sur {{platform}}',
     avatarAlt: 'Avatar de {{handle}}',
-    onboarding:
-      'Vous êtes connecté. Sélectionnez les cartes voulues, puis utilisez « Ne plus suivre la sélection ». Le désabonnement n’affecte que votre propre compte.',
     dismiss: 'Fermer',
     confirmTitle: 'Ne plus suivre ces utilisateurs ?',
     confirmBody_one:
@@ -181,7 +179,6 @@ export const fr: Translation = {
 
   cta: {
     title: 'Cela vous a servi ?',
-    body: 'Partagez-le avec un ami ou mettez une étoile au projet sur GitHub. Cela aide d’autres personnes à le trouver.',
     share: 'Partager',
     shareText: 'Je viens de trouver {{count}} comptes qui ne me suivent pas en retour sur {{platform}} 👀 Vérifiez les vôtres, gratuitement et sans mot de passe :',
     linkCopied: 'Lien copié dans le presse-papiers',

@@ -24,7 +24,7 @@ interface ResultsCtaProps {
 }
 
 /**
- * A quiet "found it useful?" card after a result: share (only the count, never
+ * A quiet "found it useful?" line after a result: share (only the count, never
  * names) or star the repo. Dismissing or starring hides it for good.
  */
 export const ResultsCta = ({ tab, platformLabel, count }: ResultsCtaProps) => {
@@ -63,42 +63,38 @@ export const ResultsCta = ({ tab, platformLabel, count }: ResultsCtaProps) => {
   }
 
   const buttonClass =
-    'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-400'
+    'focus-visible:ring-brand-400 inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors outline-none focus-visible:ring-2'
 
+  // One quiet line under the results, so it never competes with the list.
   return (
-    <div className="rounded-card border-brand-500/30 bg-brand-500/10 relative flex flex-col gap-3 border px-4 py-3 pr-10 sm:flex-row sm:items-center sm:justify-between">
-      <div className="space-y-0.5">
-        <p className="text-fg text-sm font-medium">{t('cta.title')}</p>
-        <p className="text-fg-muted text-xs">{t('cta.body')}</p>
-      </div>
-      <div className="flex shrink-0 flex-wrap gap-2">
-        <button
-          onClick={share}
-          className={`${buttonClass} border-brand-500/40 bg-brand-500 text-bg hover:bg-brand-600`}
-        >
-          <Share2 className="h-4 w-4" aria-hidden="true" />
-          {t('cta.share')}
-        </button>
-        <a
-          href={REPO_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => {
-            track('star_clicked', { source: 'results' })
-            hide()
-          }}
-          className={`${buttonClass} border-border bg-surface text-fg hover:bg-surface-hover`}
-        >
-          <Star className="h-4 w-4" aria-hidden="true" />
-          {t('cta.star')}
-        </a>
-      </div>
+    <div className="text-fg-muted flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm">
+      <span>{t('cta.title')}</span>
+      <button
+        onClick={share}
+        className={`${buttonClass} text-brand-400 hover:text-brand-300`}
+      >
+        <Share2 className="h-4 w-4" aria-hidden="true" />
+        {t('cta.share')}
+      </button>
+      <a
+        href={REPO_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => {
+          track('star_clicked', { source: 'results' })
+          hide()
+        }}
+        className={`${buttonClass} hover:text-fg`}
+      >
+        <Star className="h-4 w-4" aria-hidden="true" />
+        {t('cta.star')}
+      </a>
       <button
         onClick={hide}
         aria-label={t('cta.dismiss')}
-        className="text-fg-muted hover:text-fg focus-visible:ring-brand-400 absolute top-2 right-2 cursor-pointer rounded-md p-1 transition-colors outline-none focus-visible:ring-2"
+        className="hover:text-fg focus-visible:ring-brand-400 cursor-pointer rounded-md p-1 transition-colors outline-none focus-visible:ring-2"
       >
-        <X className="h-4 w-4" aria-hidden="true" />
+        <X className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </div>
   )

@@ -81,8 +81,6 @@ export const tr: Translation = {
     copyFailed: 'Panoya kopyalanamadı',
     openOn: '{{handle}} profilini {{platform}} üzerinde aç',
     avatarAlt: '{{handle}} avatarı',
-    onboarding:
-      'Giriş yaptın. İstediğin kartları seç, sonra “Seçilenleri bırak”ı kullan. Takip bırakma yalnızca kendi hesabını etkiler.',
     dismiss: 'Kapat',
     confirmTitle: 'Takibi bırak?',
     confirmBody_one:
@@ -181,7 +179,6 @@ export const tr: Translation = {
 
   cta: {
     title: 'İşine yaradı mı?',
-    body: 'Bir arkadaşınla paylaş ya da projeye GitHub’da yıldız ver. Daha çok kişinin bulmasına yardım eder.',
     share: 'Paylaş',
     shareText: '{{platform}} üzerinde beni geri takip etmeyen {{count}} hesap buldum 👀 Sen de ücretsiz ve şifresiz kontrol et:',
     linkCopied: 'Link panoya kopyalandı',

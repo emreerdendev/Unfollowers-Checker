@@ -81,8 +81,6 @@ export const es: Translation = {
     copyFailed: 'No se pudo copiar al portapapeles',
     openOn: 'Abrir {{handle}} en {{platform}}',
     avatarAlt: 'Avatar de {{handle}}',
-    onboarding:
-      'Has iniciado sesión. Selecciona las tarjetas que quieras y usa «Dejar de seguir a los seleccionados». Dejar de seguir solo afecta a tu propia cuenta.',
     dismiss: 'Cerrar',
     confirmTitle: '¿Dejar de seguir a estos usuarios?',
     confirmBody_one:
@@ -181,7 +179,6 @@ export const es: Translation = {
 
   cta: {
     title: '¿Te ha sido útil?',
-    body: 'Compártelo con un amigo o dale una estrella al proyecto en GitHub. Así más gente puede encontrarlo.',
     share: 'Compartir',
     shareText: 'Acabo de encontrar {{count}} cuentas que no me siguen de vuelta en {{platform}} 👀 Revisa las tuyas, gratis y sin contraseña:',
     linkCopied: 'Enlace copiado al portapapeles',

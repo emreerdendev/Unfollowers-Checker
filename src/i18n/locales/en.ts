@@ -78,8 +78,6 @@ export const en = {
     copyFailed: 'Could not copy to clipboard',
     openOn: 'Open {{handle}} on {{platform}}',
     avatarAlt: '{{handle}} avatar',
-    onboarding:
-      'You’re signed in. Select the cards you want, then use “Unfollow selected”. Unfollowing only affects your own account.',
     dismiss: 'Dismiss',
     confirmTitle: 'Unfollow users?',
     confirmBody_one:
@@ -179,7 +177,6 @@ export const en = {
 
   cta: {
     title: 'Found it useful?',
-    body: 'Share it with a friend, or star the project on GitHub. It helps more people find it.',
     share: 'Share',
     shareText: 'I just found {{count}} accounts that don’t follow me back on {{platform}} 👀 Check yours, free and without a password:',
     linkCopied: 'Link copied to clipboard',

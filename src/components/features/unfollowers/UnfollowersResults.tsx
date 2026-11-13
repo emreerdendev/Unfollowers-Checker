@@ -215,13 +215,26 @@ const ResultsState = ({
 
   return (
     <div ref={topRef} className="flex flex-col gap-4 scroll-mt-4">
-      <OnboardingHint show={isOwnList} />
-
-      {/* Headline — the count, large; stacks on mobile so the copy button never
-          crowds the sentence; side-by-side from sm up. */}
+      {/* Headline — the count, large, with "Select all" (own list) and copy;
+          stacks on mobile so the actions never crowd the sentence. */}
       <ResultSummary
         count={count}
-        actions={<CopyButton handles={users.map((u) => u.handle)} />}
+        actions={
+          <>
+            {isOwnList && (
+              <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm text-fg-muted transition-colors hover:text-fg">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="h-4 w-4 cursor-pointer accent-brand-500"
+                />
+                {t('results.selectAll')}
+              </label>
+            )}
+            <CopyButton handles={users.map((u) => u.handle)} />
+          </>
+        }
       >
         {isOwnList ? (
           <Trans
@@ -259,25 +272,16 @@ const ResultsState = ({
       {/* Guest CTA (platform-aware) */}
       {!isAuthed && <GuestCta platform={platform} handle={handle} />}
 
-      {/* Bulk action bar (own list only). A sticky wrapper pinned to the bottom
-          keeps "Unfollow selected" reachable while scrolling. The wrapper has a
-          solid page-background so cards scrolling underneath are cleanly masked
-          rather than bleeding through. It returns to normal flow — never covering
-          the footer — once you reach the end. */}
-      {isOwnList && (
+      {/* Bulk action bar (own list, once something is selected). A sticky
+          wrapper pinned to the bottom keeps "Unfollow selected" reachable while
+          scrolling; its solid page-background masks cards scrolling underneath.
+          It returns to normal flow — never covering the footer — at the end. */}
+      {isOwnList && selected.size > 0 && (
         <div className="sticky bottom-0 z-10 order-last -mx-4 bg-bg px-4 py-3 sm:-mx-6 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2 shadow-lg shadow-black/30">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg-muted">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleAll}
-                className="h-4 w-4 cursor-pointer accent-brand-500"
-              />
-              {selected.size > 0
-                ? t('results.selectedCount', { count: selected.size })
-                : t('results.selectAll')}
-            </label>
+            <span className="text-sm text-fg-muted">
+              {t('results.selectedCount', { count: selected.size })}
+            </span>
             <button
               onClick={() => requestUnfollow([...selected])}
               disabled={selected.size === 0 || unfollow.isPending}
@@ -311,7 +315,11 @@ const ResultsState = ({
         />
       )}
 
-      <ResultsCta tab={platform} platformLabel={PLATFORMS[platform].label} count={count} />
+      {/* After the bulk bar (also order-last), so selecting never pushes it
+          between the list and its actions. */}
+      <div className="order-last">
+        <ResultsCta tab={platform} platformLabel={PLATFORMS[platform].label} count={count} />
+      </div>
 
       <ConfirmDialog
         open={confirmOpen}
@@ -493,35 +501,6 @@ const BlueskySignIn = ({ defaultHandle }: { defaultHandle: string }) => {
         </button>
       </div>
     </form>
-  )
-}
-
-const ONBOARDING_KEY = 'guc.onboarding.dismissed'
-
-const OnboardingHint = ({ show }: { show: boolean }) => {
-  const { t } = useTranslation()
-  const [dismissed, setDismissed] = useState(
-    () => localStorage.getItem(ONBOARDING_KEY) === '1',
-  )
-
-  if (!show || dismissed) return null
-
-  const dismiss = () => {
-    localStorage.setItem(ONBOARDING_KEY, '1')
-    setDismissed(true)
-  }
-
-  return (
-    <div className="flex items-start justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-fg-muted">
-      <p>{t('results.onboarding')}</p>
-      <button
-        onClick={dismiss}
-        className="shrink-0 cursor-pointer rounded-md px-2 py-0.5 text-fg-muted outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-brand-400"
-        aria-label={t('results.dismiss')}
-      >
-        ✕
-      </button>
-    </div>
   )
 }
 

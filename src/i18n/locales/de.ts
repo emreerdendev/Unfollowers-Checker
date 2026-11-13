@@ -81,8 +81,6 @@ export const de: Translation = {
     copyFailed: 'Konnte nicht in die Zwischenablage kopieren',
     openOn: '{{handle}} auf {{platform}} öffnen',
     avatarAlt: 'Avatar von {{handle}}',
-    onboarding:
-      'Du bist angemeldet. Wähle die gewünschten Karten aus und nutze dann „Ausgewählte entfolgen“. Entfolgen betrifft nur dein eigenes Konto.',
     dismiss: 'Schließen',
     confirmTitle: 'Nutzer entfolgen?',
     confirmBody_one:
@@ -182,7 +180,6 @@ export const de: Translation = {
 
   cta: {
     title: 'War es hilfreich?',
-    body: 'Teile es mit Freunden oder gib dem Projekt einen Stern auf GitHub. So finden es mehr Menschen.',
     share: 'Teilen',
     shareText: 'Ich habe gerade {{count}} Konten gefunden, die mir auf {{platform}} nicht zurückfolgen 👀 Prüf deine – kostenlos und ohne Passwort:',
     linkCopied: 'Link in die Zwischenablage kopiert',
