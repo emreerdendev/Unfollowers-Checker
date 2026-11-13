@@ -98,7 +98,7 @@ export const Footer = () => {
       {
         id: 'sponsor',
         href: SPONSOR_URL,
-        className: `${card} border-brand-500/30 bg-[color-mix(in_srgb,var(--color-brand-500)_20%,var(--color-bg))] text-brand-400 hover:bg-[color-mix(in_srgb,var(--color-brand-500)_30%,var(--color-bg))] hover:text-brand-300 rounded-full border`,
+        className: `${card} border-green-600/40 dark:border-brand-500/30 bg-[color-mix(in_srgb,var(--color-brand-500)_20%,var(--color-bg))] text-green-700 dark:text-brand-400 hover:bg-[color-mix(in_srgb,var(--color-brand-500)_30%,var(--color-bg))] hover:text-green-800 dark:hover:text-brand-300 rounded-full border`,
         children: (
           <>
             <Heart className="h-4 w-4 fill-current" aria-hidden="true" />
