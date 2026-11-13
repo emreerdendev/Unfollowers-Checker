@@ -93,6 +93,8 @@ export const PixelLinkStrip = ({
       <PixelGrid
         {...gridProps}
         calmRef={listRef}
+        // Never twinkle right behind a link or card.
+        avoid={() => listRef.current?.querySelectorAll('a') ?? []}
         className="absolute inset-0 h-full w-full"
       />
       <ul

@@ -19,6 +19,13 @@ export interface PixelGridProps {
   calmRef?: RefObject<HTMLElement | null>
   /** Of the twinkling cells, the share that still twinkles behind `calmRef`. */
   calmShare?: number
+  /**
+   * Elements no cell may twinkle behind at all (e.g. each link), plus
+   * `avoidMargin` px around them. Read on every frame, so it follows layout.
+   */
+  avoid?: () => Iterable<Element>
+  /** Clearance around `avoid` elements, in CSS pixels. */
+  avoidMargin?: number
   /** Each twinkling cell pulses once per this many seconds, [min, max]. */
   periodRange?: [number, number]
   className?: string
@@ -87,9 +94,15 @@ interface Twinkle {
 type Options = Required<
   Pick<
     PixelGridProps,
-    'palette' | 'isDark' | 'twinkleShare' | 'calmShare' | 'periodRange'
+    | 'palette'
+    | 'isDark'
+    | 'twinkleShare'
+    | 'calmShare'
+    | 'periodRange'
+    | 'avoidMargin'
   >
->
+> &
+  Pick<PixelGridProps, 'avoid'>
 
 /**
  * A faint pixel grid where a few cells slowly brighten and fade, each on its
@@ -103,6 +116,8 @@ export const PixelGrid = ({
   twinkleShare = 0.06,
   calmRef,
   calmShare = 0.35,
+  avoid,
+  avoidMargin = 2,
   periodRange = [3, 7],
   className = '',
 }: PixelGridProps) => {
@@ -116,9 +131,19 @@ export const PixelGrid = ({
     twinkleShare,
     calmShare,
     periodRange,
+    avoid,
+    avoidMargin,
   })
   useEffect(() => {
-    options.current = { palette, isDark, twinkleShare, calmShare, periodRange }
+    options.current = {
+      palette,
+      isDark,
+      twinkleShare,
+      calmShare,
+      periodRange,
+      avoid,
+      avoidMargin,
+    }
   })
 
   useEffect(() => {
@@ -211,9 +236,33 @@ export const PixelGrid = ({
       const calmLeft = calmBox ? calmBox.left - box.left - 8 : Infinity
       const calmRight = calmBox ? calmBox.right - box.left + 8 : -Infinity
 
+      // Keep-out boxes (each link, plus a margin), in canvas coordinates.
+      const { avoid, avoidMargin: m } = options.current
+      const keepOut = avoid
+        ? Array.from(avoid(), (el) => {
+            const r = el.getBoundingClientRect()
+            return {
+              left: r.left - box.left - m,
+              right: r.right - box.left + m,
+              top: r.top - box.top - m,
+              bottom: r.bottom - box.top + m,
+            }
+          })
+        : []
+
       const time = now / 1000
       for (const { x, y, period, phase, calm } of twinkles) {
         if (!calm && x + BLOCK > calmLeft && x < calmRight) continue
+        if (
+          keepOut.some(
+            (r) =>
+              x + BLOCK > r.left &&
+              x < r.right &&
+              y + BLOCK > r.top &&
+              y < r.bottom,
+          )
+        )
+          continue
         // A short, soft pulse once per period; dark the rest of the time.
         const wave = Math.sin(2 * Math.PI * (time / period + phase))
         const level = Math.round(Math.max(0, wave) ** 3 * (STEPS - 1))
