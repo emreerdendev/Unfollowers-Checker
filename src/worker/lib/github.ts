@@ -56,6 +56,13 @@ const mapErrorResponse = (response: Response): ProviderError => {
     )
   }
 
+  // A 401 means the server's GITHUB_TOKEN was revoked or expired; every
+  // lookup fails until it's replaced, so say so in the logs.
+  console.error(
+    response.status === 401
+      ? 'GitHub rejected GITHUB_TOKEN (401): replace the secret'
+      : `GitHub API error: ${response.status}`,
+  )
   return new ProviderError('UPSTREAM', 'GitHub API error', 502)
 }
 
