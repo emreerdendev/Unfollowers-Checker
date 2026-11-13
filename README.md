@@ -77,11 +77,12 @@ This is a free, personal utility and is **not affiliated with, endorsed by, or c
 ## Feedback & contact
 
 - **Found a bug or have a request?** [Open an issue](https://github.com/emreerdendev/Unfollowers-Checker/issues) on GitHub.
-- **Anything else?** Email **emreerden@pm.me** or visit [emreerden.dev](https://emreerden.dev).
+- **Want to chat?** Join **PSIBS!** (Product, Startup, Indie, Build, Software) on [Discord](https://discord.gg/2C8pYMVAw5).
+- **Anything else?** Email **emreerden@pm.me**, visit [emreerden.dev](https://emreerden.dev), or find me on [LinkedIn](https://www.linkedin.com/in/emreerdendev) and [X](https://x.com/emreerdendev).
 
-## Support
+## Sponsor
 
-This is a free, ad-free utility maintained in spare time. If it saved you some, you can [**❤️ Sponsor the project**](https://github.com/sponsors/emreerdendev) on GitHub Sponsors — any support helps keep it running and improving.
+This is a free, ad-free utility maintained in spare time. If it saved you some, you can [**❤️ Sponsor the project**](https://github.com/sponsors/emreerdendev) on GitHub Sponsors or [**☕ buy me a coffee**](https://www.buymeacoffee.com/emreerdendev) — any support helps keep it running and improving.
 
 ## Credits
 
