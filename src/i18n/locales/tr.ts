@@ -137,7 +137,60 @@ export const tr: Translation = {
     notFound: 'Hesap bulunamadı. Handle’ı kontrol edip tekrar dene.',
   },
 
+  nav: {
+    changelog: 'Changelog',
+    faq: 'SSS',
+    home: 'Ana sayfa',
+    breadcrumb: 'Konum',
+  },
+
+  home: {
+    lead: 'Takip ettiklerinle seni takip edenleri karşılaştır: Instagram, X, GitHub, Bluesky, GitLab ve Mastodon’da.',
+    trustFree: 'Ücretsiz',
+    trustNoPassword: 'Şifre yok',
+    trustNothingStored: 'Veri saklanmaz',
+    trustOpenSource: 'Açık kaynak',
+    pickTitle: 'Bir platform seç',
+    fixed: 'Düzeltildi',
+    howTitle: 'Nasıl çalışır?',
+    step1Title: 'Platformu seç',
+    step1Body: 'Kontrol etmek istediğin hesabı seç.',
+    step2Title: 'Kontrolü başlat',
+    step2Body: 'Platforma göre kullanıcı adını gir, script’i yapıştır ya da arşivini yükle.',
+    step3Title: 'İncele ve temizle',
+    step3Body: 'Seni geri takip etmeyen herkesi gör, ardından seçtiklerini takipten çık.',
+    method: {
+      github: 'Herhangi bir kullanıcı adını gir',
+      bluesky: 'Herhangi bir kullanıcı adını gir',
+      gitlab: 'Hesabını kontrol etmek için giriş yap',
+      mastodon: 'kullanici@sunucu biçiminde gir',
+      instagram: 'instagram.com’da script yapıştır',
+      twitter: 'Veri arşivini yükle',
+    },
+  },
+
+  seo: {
+    faqLink: 'Aklında soru mu var? SSS’ye göz at',
+    aboutTitle: 'Unfollowers Checker hakkında',
+    aboutPlatform: '{{platform}} kontrolü nasıl çalışır?',
+    openTool: '{{platform}} kontrolünü aç',
+    published: 'Yayınlanma: {{date}}',
+  },
+
+  cta: {
+    title: 'İşine yaradı mı?',
+    body: 'Bir arkadaşınla paylaş ya da projeye GitHub’da yıldız ver. Daha çok kişinin bulmasına yardım eder.',
+    share: 'Paylaş',
+    shareText: '{{platform}} üzerinde beni geri takip etmeyen {{count}} hesap buldum 👀 Sen de ücretsiz ve şifresiz kontrol et:',
+    linkCopied: 'Link panoya kopyalandı',
+    star: 'GitHub’da yıldız ver',
+    dismiss: 'Kapat',
+  },
+
   footer: {
+    siteLinks: 'Site bağlantıları',
+    authorLabel: 'Geliştirici hakkında',
+    guides: 'Rehberler',
     viewSource: 'GitHub’da yıldızla',
     support: 'Destek ol',
     discord: 'Discord topluluğumuza katıl!',
@@ -167,6 +220,9 @@ export const tr: Translation = {
     howInstagramLabel: 'Instagram:',
     howInstagramBody:
       'tamamen kendi tarayıcı oturumunda, senin yapıştırdığın bir script ile çalışır. Sunucularımıza hiçbir şey gönderilmez.',
+    analyticsTitle: 'Analitik',
+    analyticsBody:
+      'Ziyaretleri ve birkaç anonim olayı (örneğin bir kontrolün yapıldığını ya da Instagram script’inin kopyalandığını) saymak için Google Analytics kullanıyoruz. Kullanıcı adları, takipçi listeleri ve dosyalar asla gönderilmez.',
     riskTitle: 'Kendi sorumluluğunda kullan',
     riskBody:
       'Otomatik veya toplu işlemler bir platformun hizmet şartlarına aykırı olabilir ve geçici kısıtlamalara ya da başka hesap işlemlerine yol açabilir. Özellikle Instagram script’i resmi olmayan, üçüncü taraf bir araçtır. Bu özellikleri kendi hesaplarında nasıl kullandığından sen sorumlusun.',

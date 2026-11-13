@@ -1,0 +1,42 @@
+# Unfollowers Checker
+
+> Free, open-source web tool that shows which accounts you follow don't follow you back, on Instagram, X (Twitter), GitHub, Bluesky, GitLab and Mastodon. It never asks for a password and stores no data.
+
+- No account or payment needed. No ads, no limits.
+- No password: sign-in, where needed, uses each platform's official OAuth.
+- Nothing stored: there is no database; follower lists are compared per request and discarded.
+- Open source: https://github.com/emreerdendev/Unfollowers-Checker
+- Available in English, Turkish, German, French and Spanish.
+
+## How each platform works
+
+- [GitHub](https://unfollowerschecker.com/github): enter any username to see who it follows that doesn't follow back (public API, no sign-in). Sign in with GitHub to bulk-unfollow from your own account.
+- [Bluesky](https://unfollowerschecker.com/bluesky): enter any handle (public AT Protocol API, no sign-in). Sign in with Bluesky OAuth to bulk-unfollow.
+- [GitLab](https://unfollowerschecker.com/gitlab): follow lists are private on GitLab, so you sign in and check your own account on gitlab.com, then bulk-unfollow.
+- [Mastodon](https://unfollowerschecker.com/mastodon): enter a user@instance handle; viewing works on any instance that shows follow lists. Sign-in and unfollowing work on mastodon.social.
+- [Instagram](https://unfollowerschecker.com/instagram): Instagram has no public follower API, so you paste a small open-source script into the browser console on instagram.com. It runs in your own session, lists who doesn't follow you back, and can unfollow selected accounts in batches with randomized delays, verifying each unfollow. Scans resume if interrupted. Needs a desktop browser.
+- [X (Twitter)](https://unfollowerschecker.com/x-twitter): X has no free follower API, so you upload following.js and follower.js from your official X data archive. The comparison runs entirely in the browser; files are never uploaded. Results link to each profile so you unfollow on X.
+
+## FAQ
+
+- [Frequently asked questions](https://unfollowerschecker.com/faq): general questions plus a section per platform (e.g. /faq#instagram).
+
+## Guides
+
+Available in English, Turkish, German, French and Spanish (e.g. /tr/guides/…).
+
+- [How to See Who Doesn't Follow You Back on Instagram](https://unfollowerschecker.com/guides/see-who-unfollowed-you-on-instagram)
+- [Are Instagram Unfollower Apps Safe? What to Check First](https://unfollowerschecker.com/guides/are-instagram-unfollower-apps-safe)
+- [Instagram "Action Blocked": What It Means and What to Do](https://unfollowerschecker.com/guides/instagram-action-blocked)
+- [How to Find Who Doesn't Follow You Back on Bluesky](https://unfollowerschecker.com/guides/bluesky-who-doesnt-follow-you-back)
+- [How to See Who Doesn't Follow You Back on GitHub](https://unfollowerschecker.com/guides/github-who-doesnt-follow-you-back)
+- [How to Download Your X (Twitter) Data Archive](https://unfollowerschecker.com/guides/download-your-x-twitter-archive)
+
+## Changelog
+
+- [What's new](https://unfollowerschecker.com/changelog)
+
+## Optional
+
+- [Turkish version](https://unfollowerschecker.com/tr)
+- [Sitemap](https://unfollowerschecker.com/sitemap.xml)

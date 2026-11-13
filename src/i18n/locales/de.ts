@@ -138,7 +138,60 @@ export const de: Translation = {
     notFound: 'Konto nicht gefunden. Prüfe das Handle und versuch es erneut.',
   },
 
+  nav: {
+    changelog: 'Changelog',
+    faq: 'FAQ',
+    home: 'Startseite',
+    breadcrumb: 'Brotkrümelnavigation',
+  },
+
+  home: {
+    lead: 'Vergleiche, wem du folgst, mit denen, die dir folgen – auf Instagram, X, GitHub, Bluesky, GitLab und Mastodon.',
+    trustFree: 'Kostenlos',
+    trustNoPassword: 'Kein Passwort',
+    trustNothingStored: 'Nichts gespeichert',
+    trustOpenSource: 'Open Source',
+    pickTitle: 'Wähle eine Plattform',
+    fixed: 'Repariert',
+    howTitle: 'So funktioniert’s',
+    step1Title: 'Plattform wählen',
+    step1Body: 'Wähle das Konto, das du prüfen möchtest.',
+    step2Title: 'Prüfung starten',
+    step2Body: 'Je nach Plattform: Benutzernamen eingeben, Skript einfügen oder Archiv hochladen.',
+    step3Title: 'Prüfen und aufräumen',
+    step3Body: 'Sieh alle, die dir nicht zurückfolgen, und entfolge den gewählten Konten.',
+    method: {
+      github: 'Beliebigen Benutzernamen eingeben',
+      bluesky: 'Beliebiges Handle eingeben',
+      gitlab: 'Anmelden, um dein Konto zu prüfen',
+      mastodon: 'Handle im Format user@instanz',
+      instagram: 'Skript auf instagram.com einfügen',
+      twitter: 'Datenarchiv hochladen',
+    },
+  },
+
+  seo: {
+    faqLink: 'Fragen? Zu den FAQ',
+    aboutTitle: 'Über Unfollowers Checker',
+    aboutPlatform: 'So funktioniert der {{platform}}-Check',
+    openTool: '{{platform}}-Check öffnen',
+    published: 'Veröffentlicht am {{date}}',
+  },
+
+  cta: {
+    title: 'War es hilfreich?',
+    body: 'Teile es mit Freunden oder gib dem Projekt einen Stern auf GitHub. So finden es mehr Menschen.',
+    share: 'Teilen',
+    shareText: 'Ich habe gerade {{count}} Konten gefunden, die mir auf {{platform}} nicht zurückfolgen 👀 Prüf deine – kostenlos und ohne Passwort:',
+    linkCopied: 'Link in die Zwischenablage kopiert',
+    star: 'Stern auf GitHub',
+    dismiss: 'Schließen',
+  },
+
   footer: {
+    siteLinks: 'Seitenlinks',
+    authorLabel: 'Über den Autor',
+    guides: 'Anleitungen',
     viewSource: 'Auf GitHub favorisieren',
     support: 'Unterstützen',
     discord: 'Tritt unserer Discord-Community bei!',
@@ -168,6 +221,9 @@ export const de: Translation = {
     howInstagramLabel: 'Instagram:',
     howInstagramBody:
       'läuft vollständig in deiner eigenen Browser-Sitzung über ein Skript, das du selbst einfügst. Es wird nichts an unsere Server gesendet.',
+    analyticsTitle: 'Analyse',
+    analyticsBody:
+      'Wir nutzen Google Analytics, um Besuche und einige anonyme Ereignisse zu zählen (z. B. dass eine Prüfung gestartet oder das Instagram-Skript kopiert wurde). Benutzernamen, Follower-Listen und Dateien werden nie gesendet.',
     riskTitle: 'Nutzung auf eigene Verantwortung',
     riskBody:
       'Automatisierte oder Massenaktionen können gegen die Nutzungsbedingungen einer Plattform verstoßen und zu vorübergehenden Einschränkungen oder anderen Kontomaßnahmen führen. Besonders das Instagram-Skript ist ein inoffizielles Drittanbieter-Tool. Du bist dafür verantwortlich, wie du diese Funktionen mit deinen eigenen Konten nutzt.',

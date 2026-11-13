@@ -135,7 +135,60 @@ export const en = {
     notFound: 'Account not found. Check the handle and try again.',
   },
 
+  nav: {
+    changelog: 'Changelog',
+    faq: 'FAQ',
+    home: 'Home',
+    breadcrumb: 'Breadcrumb',
+  },
+
+  home: {
+    lead: 'Compare who you follow with who follows you back, on Instagram, X, GitHub, Bluesky, GitLab and Mastodon.',
+    trustFree: 'Free',
+    trustNoPassword: 'No password',
+    trustNothingStored: 'Nothing stored',
+    trustOpenSource: 'Open source',
+    pickTitle: 'Choose a platform',
+    fixed: 'Fixed',
+    howTitle: 'How it works',
+    step1Title: 'Pick a platform',
+    step1Body: 'Choose the account you want to check.',
+    step2Title: 'Run the check',
+    step2Body: 'Enter a username, paste the script or upload your archive, depending on the platform.',
+    step3Title: 'Review and clean up',
+    step3Body: 'See everyone who doesn’t follow you back, then unfollow the ones you choose.',
+    method: {
+      github: 'Enter any username',
+      bluesky: 'Enter any handle',
+      gitlab: 'Sign in to check your account',
+      mastodon: 'Enter a user@instance handle',
+      instagram: 'Paste a script on instagram.com',
+      twitter: 'Upload your data archive',
+    },
+  },
+
+  seo: {
+    faqLink: 'Questions? Read the FAQ',
+    aboutTitle: 'About Unfollowers Checker',
+    aboutPlatform: 'How the {{platform}} check works',
+    openTool: 'Open the {{platform}} checker',
+    published: 'Published {{date}}',
+  },
+
+  cta: {
+    title: 'Found it useful?',
+    body: 'Share it with a friend, or star the project on GitHub. It helps more people find it.',
+    share: 'Share',
+    shareText: 'I just found {{count}} accounts that don’t follow me back on {{platform}} 👀 Check yours, free and without a password:',
+    linkCopied: 'Link copied to clipboard',
+    star: 'Star on GitHub',
+    dismiss: 'Dismiss',
+  },
+
   footer: {
+    siteLinks: 'Site links',
+    authorLabel: 'About the author',
+    guides: 'Guides',
     viewSource: 'Star on GitHub',
     support: 'Support',
     discord: 'Join our Discord community',
@@ -165,6 +218,9 @@ export const en = {
     howInstagramLabel: 'Instagram:',
     howInstagramBody:
       'runs entirely in your own browser session via a script you paste yourself. Nothing is sent to our servers.',
+    analyticsTitle: 'Analytics',
+    analyticsBody:
+      'We use Google Analytics to count visits and a few anonymous events (for example, that a check was run or the Instagram script was copied). Usernames, follower lists and files are never sent to it.',
     riskTitle: 'Use at your own risk',
     riskBody:
       "Automated or bulk actions can run against a platform's terms of service and may lead to temporary limits or other account actions. The Instagram script in particular is an unofficial, third-party tool. You are responsible for how you use these features on your own accounts.",

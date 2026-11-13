@@ -15,7 +15,8 @@
     "MASTODON_INSTANCE": "mastodon.social"
   },
   // Vite (@cloudflare/vite-plugin) builds the SPA into ./dist/client. Anything the
-  // Worker doesn't handle falls back to index.html (client-side routing).
+  // Worker doesn't handle gets the prerendered 404.html with a 404 status
+  // (every real page is prerendered, so there's no client-only route).
   //
   // run_worker_first: the backend routes MUST run the Worker before the static
   // asset layer. Otherwise a full-page browser navigation to /api/auth/*/login
@@ -25,7 +26,7 @@
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
+    "not_found_handling": "404-page",
     "run_worker_first": [
       "/api/*",
       "/client-metadata.json",

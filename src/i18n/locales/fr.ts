@@ -137,7 +137,60 @@ export const fr: Translation = {
     notFound: 'Compte introuvable. Vérifiez l’identifiant et réessayez.',
   },
 
+  nav: {
+    changelog: 'Changelog',
+    faq: 'FAQ',
+    home: 'Accueil',
+    breadcrumb: 'Fil d’Ariane',
+  },
+
+  home: {
+    lead: 'Comparez les comptes que vous suivez avec ceux qui vous suivent, sur Instagram, X, GitHub, Bluesky, GitLab et Mastodon.',
+    trustFree: 'Gratuit',
+    trustNoPassword: 'Sans mot de passe',
+    trustNothingStored: 'Rien n’est conservé',
+    trustOpenSource: 'Open source',
+    pickTitle: 'Choisissez une plateforme',
+    fixed: 'Corrigé',
+    howTitle: 'Comment ça marche',
+    step1Title: 'Choisir une plateforme',
+    step1Body: 'Choisissez le compte à vérifier.',
+    step2Title: 'Lancer la vérification',
+    step2Body: 'Selon la plateforme : saisissez un nom, collez le script ou importez votre archive.',
+    step3Title: 'Vérifier et faire le tri',
+    step3Body: 'Voyez tous ceux qui ne vous suivent pas en retour, puis désabonnez-vous de ceux que vous choisissez.',
+    method: {
+      github: 'Saisissez un nom d’utilisateur',
+      bluesky: 'Saisissez un identifiant',
+      gitlab: 'Connectez-vous pour vérifier votre compte',
+      mastodon: 'Identifiant au format user@instance',
+      instagram: 'Collez un script sur instagram.com',
+      twitter: 'Importez votre archive de données',
+    },
+  },
+
+  seo: {
+    faqLink: 'Des questions ? Consultez la FAQ',
+    aboutTitle: 'À propos d’Unfollowers Checker',
+    aboutPlatform: 'Comment fonctionne la vérification {{platform}}',
+    openTool: 'Ouvrir la vérification {{platform}}',
+    published: 'Publié le {{date}}',
+  },
+
+  cta: {
+    title: 'Cela vous a servi ?',
+    body: 'Partagez-le avec un ami ou mettez une étoile au projet sur GitHub. Cela aide d’autres personnes à le trouver.',
+    share: 'Partager',
+    shareText: 'Je viens de trouver {{count}} comptes qui ne me suivent pas en retour sur {{platform}} 👀 Vérifiez les vôtres, gratuitement et sans mot de passe :',
+    linkCopied: 'Lien copié dans le presse-papiers',
+    star: 'Étoile sur GitHub',
+    dismiss: 'Fermer',
+  },
+
   footer: {
+    siteLinks: 'Liens du site',
+    authorLabel: 'À propos de l’auteur',
+    guides: 'Guides',
     viewSource: 'Ajouter une étoile sur GitHub',
     support: 'Soutenir',
     discord: 'Rejoins notre communauté Discord !',
@@ -167,6 +220,9 @@ export const fr: Translation = {
     howInstagramLabel: 'Instagram :',
     howInstagramBody:
       's’exécute entièrement dans votre propre session de navigateur via un script que vous collez vous-même. Rien n’est envoyé à nos serveurs.',
+    analyticsTitle: 'Statistiques',
+    analyticsBody:
+      'Nous utilisons Google Analytics pour compter les visites et quelques événements anonymes (par exemple, qu’une vérification a été lancée ou que le script Instagram a été copié). Les noms d’utilisateur, listes d’abonnés et fichiers ne lui sont jamais envoyés.',
     riskTitle: 'À utiliser à vos risques',
     riskBody:
       'Les actions automatisées ou en masse peuvent enfreindre les conditions d’utilisation d’une plateforme et entraîner des limitations temporaires ou d’autres mesures sur le compte. Le script Instagram en particulier est un outil tiers non officiel. Vous êtes responsable de la façon dont vous utilisez ces fonctions sur vos propres comptes.',

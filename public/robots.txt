@@ -1,0 +1,6 @@
+# Everything public is crawlable, including by AI search crawlers.
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://unfollowerschecker.com/sitemap.xml

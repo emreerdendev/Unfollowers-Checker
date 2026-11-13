@@ -521,6 +521,25 @@ app.get('/jwks.json', async (c) => {
   }
 })
 
+// Anything else that reached the Worker matched no page or asset: API paths
+// get a JSON error; everything else gets the prerendered 404 page, with a
+// real 404 status so search engines don't index it as a duplicate of home.
+// Without prerendered pages (the dev server) there's no 404.html, so serve
+// the app shell instead and let client-side routing take it from there.
+app.notFound(async (c) => {
+  if (new URL(c.req.url).pathname.startsWith('/api/')) {
+    return c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404)
+  }
+  const notFound = await c.env.ASSETS.fetch(new URL('/404', c.req.url))
+  if (notFound.ok) {
+    return new Response(notFound.body, {
+      status: 404,
+      headers: notFound.headers,
+    })
+  }
+  return c.env.ASSETS.fetch(new URL('/', c.req.url))
+})
+
 export default app
 
 /* --------------------------------- helpers -------------------------------- */
