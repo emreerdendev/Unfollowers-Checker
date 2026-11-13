@@ -85,6 +85,11 @@ export const PrivacyDialog = ({ open, onClose }: PrivacyDialogProps) => {
           </section>
 
           <section className="space-y-2">
+            <h3 className="font-medium text-fg">{t('privacy.analyticsTitle')}</h3>
+            <p>{t('privacy.analyticsBody')}</p>
+          </section>
+
+          <section className="space-y-2">
             <h3 className="font-medium text-fg">{t('privacy.riskTitle')}</h3>
             <p>{t('privacy.riskBody')}</p>
           </section>

@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { unfollowAccounts } from '../api/client'
+import { track } from '../lib/analytics'
 import type { ApiError, PlatformId, UnfollowResult } from '../types/platform'
 
 interface UnfollowInput {
@@ -17,7 +18,12 @@ export const useUnfollow = (onSuccess: (result: UnfollowResult) => void) => {
   const { t } = useTranslation()
   return useMutation<UnfollowResult, ApiError, UnfollowInput>({
     mutationFn: ({ platform, targets }) => unfollowAccounts(platform, targets),
-    onSuccess: (result) => {
+    onSuccess: (result, { platform }) => {
+      track('unfollow_done', {
+        platform,
+        count: result.removed.length,
+        failed: result.failed.length,
+      })
       if (result.removed.length > 0) {
         toast.success(t('unfollow.success', { count: result.removed.length }))
       }

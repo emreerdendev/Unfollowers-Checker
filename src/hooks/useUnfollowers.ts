@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { fetchUnfollowers } from '../api/client'
+import { track } from '../lib/analytics'
 import type {
   ApiError,
   PlatformId,
@@ -20,7 +21,11 @@ interface SearchInput {
 export const useUnfollowers = () =>
   useMutation<UnfollowersResponse, ApiError, SearchInput>({
     mutationFn: ({ platform, handle }) => fetchUnfollowers(platform, handle),
-    onError: (error) => {
+    onMutate: ({ platform }) => track('scan_started', { platform }),
+    onSuccess: (data, { platform }) =>
+      track('scan_completed', { platform, result_count: data.count }),
+    onError: (error, { platform }) => {
+      track('scan_failed', { platform, code: error.code })
       toast.error(error.message)
     },
   })
