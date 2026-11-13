@@ -12,6 +12,9 @@
   }
 
   const APP_ID = "uc-app";
+  // Where the "found it useful?" row links to. Only the count is ever shared.
+  const SITE_URL = "https://unfollowerschecker.com";
+  const REPO_URL = "https://github.com/emreerdendev/Unfollowers-Checker";
   const STYLE_ID = "uc-style";
   const STORAGE_KEY = "uc_prefs_v2";
   // An interrupted scan is saved here so it can resume where it stopped.
@@ -121,6 +124,10 @@
       unfollowDoneTitle: "Done",
       unfollowDoneBody: "{ok} unfollowed, {fail} failed",
       doneRemoved: "Unfollowed ({count})",
+      loveText: "Found it useful?",
+      loveShare: "Share",
+      loveStar: "Star on GitHub",
+      shareText: "I just found {count} accounts that don’t follow me back on Instagram 👀 Check yours, free and without a password:",
       doneFailed: "Failed ({count})",
       settings: "Settings",
       settingsTitle: "Timing settings",
@@ -237,6 +244,10 @@
       unfollowDoneTitle: "Tamamlandı",
       unfollowDoneBody: "{ok} başarılı, {fail} başarısız",
       doneRemoved: "Takibi bırakıldı ({count})",
+      loveText: "İşine yaradı mı?",
+      loveShare: "Paylaş",
+      loveStar: "GitHub’da yıldız ver",
+      shareText: "Instagram’da beni geri takip etmeyen {count} hesap buldum 👀 Sen de ücretsiz ve şifresiz kontrol et:",
       doneFailed: "Başarısız ({count})",
       settings: "Ayarlar",
       settingsTitle: "Hız ayarları",
@@ -353,6 +364,10 @@
       unfollowDoneTitle: "Fertig",
       unfollowDoneBody: "{ok} entfolgt, {fail} fehlgeschlagen",
       doneRemoved: "Entfolgt ({count})",
+      loveText: "War es hilfreich?",
+      loveShare: "Teilen",
+      loveStar: "Stern auf GitHub",
+      shareText: "Ich habe gerade {count} Konten gefunden, die mir auf Instagram nicht zurückfolgen 👀 Prüf deine – kostenlos und ohne Passwort:",
       doneFailed: "Fehlgeschlagen ({count})",
       settings: "Einstellungen",
       settingsTitle: "Timing-Einstellungen",
@@ -469,6 +484,10 @@
       unfollowDoneTitle: "Terminé",
       unfollowDoneBody: "{ok} désabonnés, {fail} échoués",
       doneRemoved: "Désabonnés ({count})",
+      loveText: "Cela vous a servi ?",
+      loveShare: "Partager",
+      loveStar: "Étoile sur GitHub",
+      shareText: "Je viens de trouver {count} comptes qui ne me suivent pas en retour sur Instagram 👀 Vérifiez les vôtres, gratuitement et sans mot de passe :",
       doneFailed: "Échoués ({count})",
       settings: "Paramètres",
       settingsTitle: "Réglages de cadence",
@@ -585,6 +604,10 @@
       unfollowDoneTitle: "Hecho",
       unfollowDoneBody: "{ok} dejados de seguir, {fail} fallidos",
       doneRemoved: "Dejados de seguir ({count})",
+      loveText: "¿Te ha sido útil?",
+      loveShare: "Compartir",
+      loveStar: "Estrella en GitHub",
+      shareText: "Acabo de encontrar {count} cuentas que no me siguen de vuelta en Instagram 👀 Revisa las tuyas, gratis y sin contraseña:",
       doneFailed: "Fallidos ({count})",
       settings: "Ajustes",
       settingsTitle: "Ajustes de ritmo",
@@ -1366,6 +1389,7 @@
       <div class="uc-results">
         ${renderResultsNotice()}
         <div class="uc-results-summary">${escapeHTML(summary)}</div>
+        ${totalNonFollowers > 0 ? renderLoveRow(totalNonFollowers) : ""}
         <div class="uc-search-row">
           <input
             class="uc-search"
@@ -1705,8 +1729,25 @@
             <button type="button" class="uc-btn uc-btn--primary" data-action="back-results">${escapeHTML(t("goBack"))}</button>
           `}
         </div>
+        ${isDone && removed.length ? renderLoveRow(removed.length) : ""}
       </div>
     `;
+  }
+
+  // "Found it useful?" — share (only the count, never names) or star the repo.
+  // Plain links: nothing is sent anywhere unless the user clicks.
+  function renderLoveRow(count) {
+    const prefix = state.language === "en" ? "" : `/${state.language}`;
+    const intent = new URL("https://x.com/intent/post");
+    intent.searchParams.set("text", t("shareText", { count: formatCount(count) }));
+    intent.searchParams.set("url", `${SITE_URL}${prefix}/instagram`);
+    return `
+      <div class="uc-love">
+        <span>${escapeHTML(t("loveText"))}</span>
+        <a href="${escapeAttr(intent.toString())}" target="_blank" rel="noopener noreferrer">${escapeHTML(t("loveShare"))}</a>
+        <span aria-hidden="true">·</span>
+        <a href="${escapeAttr(REPO_URL)}" target="_blank" rel="noopener noreferrer">${escapeHTML(t("loveStar"))}</a>
+      </div>`;
   }
 
   // A compact, non-interactive row for the unfollow-done summary list.
@@ -3027,6 +3068,28 @@
       padding: 12px 16px 4px;
       font-size: 13px;
       color: var(--uc-muted);
+    }
+    #${APP_ID} .uc-love {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 8px;
+      padding: 2px 16px 0;
+      font-size: 12px;
+      color: var(--uc-muted);
+    }
+    #${APP_ID} .uc-progress .uc-love {
+      padding: 0;
+      justify-content: center;
+    }
+    #${APP_ID} .uc-love a {
+      color: var(--uc-accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    #${APP_ID} .uc-love a:hover,
+    #${APP_ID} .uc-love a:focus-visible {
+      text-decoration: underline;
     }
     #${APP_ID} .uc-search-row {
       padding: 8px 16px;
