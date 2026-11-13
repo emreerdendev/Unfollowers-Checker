@@ -36,6 +36,17 @@ The pasted script injects a small, self-contained panel into instagram.com. It c
 - **Tune the timing** — every delay and cooldown is configurable in settings, or reset to the conservative defaults.
 - **Comfortable UI** — drag the panel anywhere, resize it from any edge or corner, minimize it, and switch theme (light / dark / system) and language (EN / TR / DE / FR / ES). Your preferences are remembered.
 
+## Why it's safe
+
+- **No password, ever.** Where signing in is needed it uses each platform's official OAuth; Instagram runs in the session you're already signed in with, and X works from the archive you download yourself.
+- **Nothing stored.** There's no database — lists are compared for one request and discarded.
+- **Open source.** Every line, including the Instagram script ([`public/instagram-unfollower.js`](public/instagram-unfollower.js)), is here to read before you run it.
+- **Careful by default.** The Instagram panel uses randomized delays and cooldowns, pauses on rate limits, and verifies each unfollow instead of trusting a `200 OK`.
+
+## Pages & guides
+
+Each platform has its own page — [`/github`](https://unfollowerschecker.com/github), [`/bluesky`](https://unfollowerschecker.com/bluesky), [`/gitlab`](https://unfollowerschecker.com/gitlab), [`/mastodon`](https://unfollowerschecker.com/mastodon), [`/instagram`](https://unfollowerschecker.com/instagram), [`/x-twitter`](https://unfollowerschecker.com/x-twitter) — in every language (`/tr/instagram`, `/de/github`, …). All questions live on one [FAQ](https://unfollowerschecker.com/faq) page, with a section per platform. Six step-by-step [guides](https://unfollowerschecker.com/guides) are available in all five languages, and the [changelog](https://unfollowerschecker.com/changelog) lists what's new.
+
 ## Tech stack
 
 - **Vite + React + TypeScript** — the single-page app
@@ -43,6 +54,8 @@ The pasted script injects a small, self-contained panel into instagram.com. It c
 - **TanStack Query** — data fetching, caching and parallel auth/lookup requests
 - **i18next + react-i18next** — internationalization (EN / TR / DE / FR / ES)
 - **lucide-react + sonner** — icons and toast notifications
+- **Build-time prerendering** — `scripts/prerender.mjs` renders every page (platforms, FAQ, guides, changelog × languages) to static HTML with its own title, description, hreflang and JSON-LD (WebApplication, Person, FAQPage, Article, BreadcrumbList), writes a `404.html` and `sitemap.xml`, and `scripts/og-images.mjs` draws a 1200×630 share image per page (satori + resvg). Crawlers that don't run JavaScript still see the content
+- **Code splitting** — English ships with the app; the other languages' UI strings, page copy and guides load on demand
 - **Hono on Cloudflare Workers** — the backend API and OAuth redirect handling; serves the SPA with single-page-application fallback (`@cloudflare/vite-plugin` builds the client into `dist/client`)
 - **AT Protocol OAuth (Bluesky) + GitHub / GitLab / Mastodon OAuth** — sign-in flows; credentials stay server-side so tokens never reach the browser
 - **Cloudflare Workers KV** — Bluesky AT Protocol OAuth state and session storage
@@ -55,6 +68,7 @@ The pasted script injects a small, self-contained panel into instagram.com. It c
 - Sign-in tokens are kept server-side (GitHub, GitLab & Mastodon: signed http-only cookie; Bluesky: stored server-side, only the account id rides in the cookie) and are not persisted beyond the actions you take.
 - The X archive diff and the Instagram script run entirely client-side in your own browser — your files and session never leave your device.
 - Bulk unfollowing affects only your own account, and only after an explicit confirmation.
+- The site uses Google Analytics to count visits and a few anonymous events (e.g. a check was run). Usernames, follower lists and files are never sent to it.
 
 ## Disclaimer
 
