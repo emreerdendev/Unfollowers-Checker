@@ -25,6 +25,8 @@ export const en = {
   auth: {
     signIn: 'Sign in',
     signOut: 'Sign out',
+    account: '{{platform}} account',
+    signedInTo: 'Signed in to {{platform}} as',
   },
 
   search: {

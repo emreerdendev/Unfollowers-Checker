@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Languages, Check } from 'lucide-react'
 import { SUPPORTED_LANGUAGES, loadLanguage } from '../../i18n'
+import { useDismiss } from '../../hooks/useDismiss'
 
 /** Compact language menu: globe button → list of the 5 supported languages. */
 export const LanguageToggle = () => {
@@ -11,24 +12,7 @@ export const LanguageToggle = () => {
 
   const current = i18n.resolvedLanguage ?? i18n.language
 
-  // Close on outside click or Escape.
-  useEffect(() => {
-    if (!open) return
-    const onClick = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onClick)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
+  useDismiss(ref, open, () => setOpen(false))
 
   const choose = (code: string) => {
     void loadLanguage(code)

@@ -27,6 +27,8 @@ export const fr: Translation = {
   auth: {
     signIn: 'Se connecter',
     signOut: 'Se déconnecter',
+    account: 'Compte {{platform}}',
+    signedInTo: 'Connecté à {{platform}} en tant que',
   },
 
   search: {

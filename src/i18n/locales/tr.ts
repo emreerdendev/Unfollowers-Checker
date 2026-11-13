@@ -27,6 +27,8 @@ export const tr: Translation = {
   auth: {
     signIn: 'Giriş yap',
     signOut: 'Çıkış yap',
+    account: '{{platform}} hesabı',
+    signedInTo: '{{platform}} hesabı',
   },
 
   search: {
