@@ -45,6 +45,7 @@ const PERSON = {
     'https://emreerden.dev',
     'https://github.com/emreerdendev',
     'https://x.com/emreerdendev',
+    'https://www.linkedin.com/in/emreerdendev',
   ],
 }
 const AUTHOR_REF = { '@id': PERSON_ID }
