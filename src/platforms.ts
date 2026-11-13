@@ -164,3 +164,13 @@ export const TWITTER_TAB = {
 }
 
 export type SelectorTab = PlatformId | 'instagram' | 'twitter'
+
+/** Label + icon for every tab, including the browser-only ones. */
+export const TAB_META: Record<SelectorTab, { label: string; icon: BrandIcon }> = {
+  github: PLATFORMS.github,
+  bluesky: PLATFORMS.bluesky,
+  gitlab: PLATFORMS.gitlab,
+  mastodon: PLATFORMS.mastodon,
+  instagram: INSTAGRAM_TAB,
+  twitter: TWITTER_TAB,
+}

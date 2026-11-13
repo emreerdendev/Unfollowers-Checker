@@ -1,61 +1,104 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { HeaderActions } from './HeaderActions'
-import { useActiveTab } from '../../hooks/activeTab'
+import { BookOpen, CircleHelp } from 'lucide-react'
+import { PageLink } from '../seo/PageLink'
+import { toLang } from '../../lib/routes'
+import { useHideOnScroll } from '../../hooks/useHideOnScroll'
 
-/** When the Instagram script was last fixed; shown on the "working again" badge. */
-const INSTAGRAM_FIX_DATE = Date.UTC(2026, 9, 20)
-/** The badge is news, not a fixture: it hides itself after this many days. */
-const INSTAGRAM_FIX_BADGE_DAYS = 45
-
-const showInstagramFixBadge = () =>
-  Date.now() - INSTAGRAM_FIX_DATE <
-  INSTAGRAM_FIX_BADGE_DAYS * 24 * 60 * 60 * 1000
-
-/** A tilted, gently wiggling sticker on the title announcing the Instagram fix. */
-const InstagramFixBadge = () => {
-  const { t, i18n } = useTranslation()
-  const date = new Intl.DateTimeFormat(i18n.resolvedLanguage, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(INSTAGRAM_FIX_DATE)
-
-  return (
-    // Phones: its own centred row above the title (no room to overlap).
-    // sm and up: a sticker tilted over the title's top-left corner.
-    <span className="pointer-events-none mb-3 flex -rotate-3 justify-center select-none sm:absolute sm:-top-12 sm:-left-20 sm:mb-0 sm:-rotate-8">
-      <span className="border-bg from-brand-400 shadow-brand-500/30 motion-safe:animate-wiggle flex flex-col items-start rounded-lg border-2 bg-linear-to-r to-teal-500 px-2.5 py-1 text-left shadow-lg sm:px-3 sm:py-1.5">
-        <span className="font-mono text-[10px] tracking-wider text-neutral-950/70 uppercase sm:text-[11px]">
-          {date}
-        </span>
-        <span className="text-sm leading-tight font-bold text-neutral-950 sm:text-base">
-          {t('header.instagramFixed')}
-        </span>
-      </span>
-    </span>
-  )
+interface HeaderProps {
+  /** Right side of the bar: sign-in/profile, theme, language. */
+  actions: ReactNode
+  /** Platform tabs, shown in a tab hanging from the bar's bottom line. */
+  tabs?: ReactNode
 }
 
-export const Header = () => {
-  const { t } = useTranslation()
-  const { tab } = useActiveTab()
+const navLinkClass =
+  'text-fg-muted hover:text-fg focus-visible:ring-brand-400 inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-medium transition-colors outline-none focus-visible:ring-2 sm:px-2.5'
+
+/**
+ * The one sticky block on every page. A full-width bar — site name · FAQ ·
+ * Guides on the left, actions on the right — and, on platform pages, the
+ * platform tabs in a tab hanging from its bottom line, which tucks up behind
+ * the bar while scrolling down and returns on scrolling up.
+ */
+export const Header = ({ actions, tabs }: HeaderProps) => {
+  const { t, i18n } = useTranslation()
+  const lang = toLang(i18n.resolvedLanguage)
+  const tabsHidden = useHideOnScroll(Boolean(tabs))
+
   return (
-    <header className="mx-auto w-full max-w-3xl px-4 sm:px-6">
-      <div className="flex justify-end pt-4">
-        <HeaderActions />
+    <header className="sticky top-0 z-30">
+      {/* z-20 over the tab strip below: both blur their backdrop, which makes
+          each its own stacking context, so the language menu and sign-in
+          popover would otherwise slide under the tabs. */}
+      <div className="border-border bg-bg/90 relative z-20 border-b backdrop-blur">
+        <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-1 px-4 sm:gap-2 sm:px-6">
+          <PageLink
+            lang={lang}
+            page={{ kind: 'home' }}
+            className="focus-visible:ring-brand-400 flex min-w-0 shrink-0 items-center gap-2 rounded-md font-semibold tracking-tight outline-none focus-visible:ring-2"
+          >
+            <img
+              src="/favicon.svg"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 shrink-0"
+            />
+            <span className="sr-only min-[480px]:not-sr-only">
+              {t('header.title')}
+            </span>
+          </PageLink>
+
+          <span
+            aria-hidden="true"
+            className="text-border hidden px-0.5 min-[480px]:inline"
+          >
+            •
+          </span>
+
+          {/* Pull the first link in by its own padding so brand · FAQ gaps match. */}
+          <nav className="mr-auto flex items-center min-[480px]:-ml-2.5">
+            <PageLink
+              lang={lang}
+              page={{ kind: 'faq' }}
+              className={navLinkClass}
+            >
+              <CircleHelp className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">{t('nav.faq')}</span>
+            </PageLink>
+            <PageLink
+              lang={lang}
+              page={{ kind: 'guides' }}
+              className={navLinkClass}
+            >
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">
+                {t('footer.guides')}
+              </span>
+            </PageLink>
+          </nav>
+
+          {actions}
+        </div>
       </div>
-      <div className="pt-8 pb-10 text-center sm:pt-12">
-        <h1 className="relative inline-block text-4xl font-bold tracking-tight sm:text-5xl">
-          {tab === 'instagram' && showInstagramFixBadge() && (
-            <InstagramFixBadge />
-          )}
-          {t('header.title')}
-        </h1>
-        <p className="text-fg-muted mx-auto mt-3 max-w-md text-base sm:text-lg">
-          {t('header.subtitle')}
-        </p>
-      </div>
+
+      {tabs && (
+        // The strip around the hanging tab is see-through, so it lets clicks
+        // through to the page scrolling underneath.
+        // Keyboard focus inside brings it back even while tucked away.
+        <div
+          className={`pointer-events-none relative z-10 px-4 transition-[translate,opacity] duration-300 ease-out focus-within:translate-y-0 focus-within:opacity-100 motion-reduce:transition-none sm:px-6 ${
+            tabsHidden
+              ? '-translate-y-full opacity-0'
+              : 'translate-y-0 opacity-100'
+          }`}
+        >
+          <div className="border-border bg-bg/90 pointer-events-auto mx-auto w-fit max-w-full rounded-b-2xl border border-t-0 px-1.5 pt-1.5 pb-1.5 backdrop-blur">
+            {tabs}
+          </div>
+        </div>
+      )}
     </header>
   )
 }

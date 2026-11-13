@@ -6,17 +6,15 @@ import { useActiveTab } from '../../../hooks/activeTab'
 import { PENDING_AUTH_KEY } from '../../../api/client'
 import { UnfollowersSearch } from './UnfollowersSearch'
 import { UnfollowersResults } from './UnfollowersResults'
-import { PlatformSelector } from '../PlatformSelector'
 import { InstagramGuide } from '../instagram/InstagramGuide'
 import { TwitterArchiveGuide } from '../twitter/TwitterArchiveGuide'
 import { GitlabSignInGate } from './GitlabSignInGate'
 import type { PlatformId } from '../../../types/platform'
-import type { SelectorTab } from '../../../platforms'
 
 export const Unfollowers = () => {
   const { t } = useTranslation()
   const { data: auth, isLoading: authLoading } = useAuth()
-  const { tab, setTab } = useActiveTab()
+  const { tab } = useActiveTab()
   const [inputValue, setInputValue] = useState('')
   const [searchedHandle, setSearchedHandle] = useState('')
   const mutation = useUnfollowers()
@@ -43,54 +41,18 @@ export const Unfollowers = () => {
     mutation.mutate({ platform, handle })
   }
 
-  const handleTabChange = (next: SelectorTab) => {
-    if (next === tab) return
-    setTab(next)
-  }
-
-  // On first load, pick the starting tab. Priority:
-  //   1. The platform we just completed an OAuth flow for (so signing in to
-  //      GitLab returns to the GitLab tab, even if already signed in to GitHub).
-  //   2. Otherwise, the first platform the user is already signed in to.
-  // Only runs once; manual tab switches afterwards are respected.
+  // Wait for auth once before the first load. The URL already picked the tab
+  // (an OAuth return lands on its platform's page — see App), so all that's
+  // left of the sign-in hand-off is clearing its marker.
   const tabInitialized = useRef(false)
   useEffect(() => {
     if (tabInitialized.current || authLoading) return
     tabInitialized.current = true
-
-    let pending: string | null = null
     try {
-      pending = localStorage.getItem(PENDING_AUTH_KEY)
-      if (pending) localStorage.removeItem(PENDING_AUTH_KEY)
+      localStorage.removeItem(PENDING_AUTH_KEY)
     } catch {
-      // storage unavailable — fall through to signed-in detection
+      // storage unavailable — nothing to clear
     }
-
-    // Honor the just-completed login, but only if it actually succeeded.
-    if (
-      (pending === 'github' ||
-        pending === 'bluesky' ||
-        pending === 'gitlab' ||
-        pending === 'mastodon') &&
-      auth?.[pending]
-    ) {
-      setTab(pending)
-      return
-    }
-
-    const signedIn = auth?.github
-      ? 'github'
-      : auth?.bluesky
-        ? 'bluesky'
-        : auth?.gitlab
-          ? 'gitlab'
-          : auth?.mastodon
-            ? 'mastodon'
-            : null
-    if (signedIn) {
-      setTab(signedIn)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading])
 
   // Reset the search state and (re)load whenever the active tab changes — no
@@ -138,8 +100,6 @@ export const Unfollowers = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      <PlatformSelector value={tab} onChange={handleTabChange} />
-
       {isInstagram ? (
         <InstagramGuide />
       ) : isTwitter ? (

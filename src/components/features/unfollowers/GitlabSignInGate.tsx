@@ -22,9 +22,6 @@ export const GitlabSignInGate = () => {
 
   return (
     <div className="flex flex-col items-center gap-4 py-12 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-500/15 text-brand-400">
-        <Icon className="h-6 w-6" aria-hidden="true" />
-      </div>
       <div className="space-y-1">
         <p className="font-medium text-fg">{t('results.gitlabGateTitle')}</p>
         <p className="max-w-md text-sm text-fg-muted">{t('results.gitlabGateBody')}</p>

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
+import { track } from '../../../lib/analytics'
 
 /**
  * Instagram has no server-side follower API, so this can't run on our backend.
@@ -89,6 +90,7 @@ export const InstagramGuide = () => {
       await navigator.clipboard.writeText(code)
       setCopied(true)
       toast.success(t('instagram.copiedToast'))
+      track('script_copied', { platform: 'instagram' })
     } catch {
       toast.error(t('instagram.copyFailed'))
     }

@@ -19,6 +19,8 @@ import { usePageSize } from '../../../hooks/usePageSize'
 import { beginSignIn, useSigningIn } from '../../../hooks/useSigningIn'
 import { login, loginBluesky, loginMastodon } from '../../../api/client'
 import { PLATFORMS, normalizeHandle } from '../../../platforms'
+import { ResultsCta } from '../../seo/ResultsCta'
+import { ResultSummary } from '../../ui/ResultSummary'
 import type { Account, PlatformId, UnfollowersResponse } from '../../../types/platform'
 
 interface UnfollowersResultsProps {
@@ -215,26 +217,26 @@ const ResultsState = ({
     <div ref={topRef} className="flex flex-col gap-4 scroll-mt-4">
       <OnboardingHint show={isOwnList} />
 
-      {/* Context line — stacks on mobile so the copy button never crowds the
-          summary text as it reflows; side-by-side from sm up. */}
-      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        <p className="text-sm text-fg-muted">
-          {isOwnList ? (
-            <Trans
-              i18nKey="results.ownSummary"
-              count={count}
-              components={[highlight]}
-            />
-          ) : (
-            <Trans
-              i18nKey="results.otherSummary"
-              values={{ handle, label: t('results.countLabel', { count }) }}
-              components={[highlight, badge]}
-            />
-          )}
-        </p>
-        <CopyButton handles={users.map((u) => u.handle)} />
-      </div>
+      {/* Headline — the count, large; stacks on mobile so the copy button never
+          crowds the sentence; side-by-side from sm up. */}
+      <ResultSummary
+        count={count}
+        actions={<CopyButton handles={users.map((u) => u.handle)} />}
+      >
+        {isOwnList ? (
+          <Trans
+            i18nKey="results.ownSummary"
+            count={count}
+            components={[highlight]}
+          />
+        ) : (
+          <Trans
+            i18nKey="results.otherSummary"
+            values={{ handle, label: t('results.countLabel', { count }) }}
+            components={[highlight, badge]}
+          />
+        )}
+      </ResultSummary>
 
       {/* For genuinely large lists, hint that results may be capped/partial. */}
       {count >= 1000 && (
@@ -308,6 +310,8 @@ const ResultsState = ({
           onChange={goToPage}
         />
       )}
+
+      <ResultsCta tab={platform} platformLabel={PLATFORMS[platform].label} count={count} />
 
       <ConfirmDialog
         open={confirmOpen}

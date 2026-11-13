@@ -80,10 +80,10 @@ export const PlatformSelector = ({ value, onChange }: PlatformSelectorProps) => 
   const mask = edgeMask(edges.left, edges.right)
 
   return (
-    <div className="mx-auto flex h-11 w-fit max-w-full items-center gap-1 rounded-lg border border-border bg-surface px-1">
+    <div className="flex max-w-full items-center">
       {/* Scrollable platform tabs; edges fade via a mask (no overlay → no tint).
-          The bar hugs its tabs and centers; on narrow screens min-w-0 lets it
-          shrink and scroll horizontally instead of overflowing. */}
+          The header's hanging tab frames them; on narrow screens min-w-0 lets
+          them shrink and scroll horizontally instead of overflowing. */}
       <div
         ref={scrollRef}
         role="tablist"
@@ -93,7 +93,7 @@ export const PlatformSelector = ({ value, onChange }: PlatformSelectorProps) => 
             ? { maskImage: mask, WebkitMaskImage: mask }
             : undefined
         }
-        className="scrollbar-none flex min-w-0 items-center gap-1 overflow-x-auto py-1.5"
+        className="scrollbar-none flex min-w-0 items-center gap-1 overflow-x-auto"
       >
         {TABS.map(({ id, label, icon: Icon }) => {
           const active = value === id

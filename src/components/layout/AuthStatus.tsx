@@ -25,18 +25,23 @@ export const AuthStatus = () => {
   const Icon = PLATFORMS[platform].icon
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <Icon className="h-4 w-4 text-fg-muted" aria-hidden="true" />
-      <span className="font-medium text-fg">@{session.handle}</span>
-      <span aria-hidden="true" className="text-border">
+    // Sits beside the platform tabs, so on phones it shrinks to the sign-out
+    // icon (the active tab already says which platform).
+    <div className="flex shrink-0 items-center gap-2 text-sm">
+      <Icon className="hidden h-4 w-4 text-fg-muted sm:block" aria-hidden="true" />
+      <span className="hidden max-w-40 truncate font-medium text-fg sm:inline">
+        @{session.handle}
+      </span>
+      <span aria-hidden="true" className="hidden text-border sm:inline">
         ·
       </span>
       <button
         onClick={() => void logout(platform)}
+        title={`@${session.handle}`}
         className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-fg-muted outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-brand-400"
       >
         <LogOut className="h-4 w-4" aria-hidden="true" />
-        {t('auth.signOut')}
+        <span className="sr-only sm:not-sr-only">{t('auth.signOut')}</span>
       </button>
     </div>
   )

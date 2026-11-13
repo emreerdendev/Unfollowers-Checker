@@ -97,7 +97,14 @@
 }
 
 @layer base {
+  /* Tailwind v4 dropped the pointer cursor on buttons; restore it everywhere
+     so no button feels inert (disabled ones keep the default). */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
   body {
-    @apply min-h-screen bg-bg font-sans text-fg antialiased;
+    @apply bg-bg text-fg min-h-screen font-sans antialiased;
   }
 }

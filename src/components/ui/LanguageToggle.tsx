@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Languages, Check } from 'lucide-react'
-import { SUPPORTED_LANGUAGES } from '../../i18n'
+import { SUPPORTED_LANGUAGES, loadLanguage } from '../../i18n'
 
 /** Compact language menu: globe button → list of the 5 supported languages. */
 export const LanguageToggle = () => {
@@ -31,7 +31,7 @@ export const LanguageToggle = () => {
   }, [open])
 
   const choose = (code: string) => {
-    void i18n.changeLanguage(code)
+    void loadLanguage(code)
     setOpen(false)
   }
 

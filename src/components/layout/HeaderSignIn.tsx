@@ -57,10 +57,8 @@ const OneClickHeaderSignIn = ({
       ) : (
         <Icon className="h-4 w-4" aria-hidden="true" />
       )}
-      <span className="hidden sm:inline">
-        {redirecting ? t('results.signingIn') : t('results.signInWith', { platform: label })}
-      </span>
-      <span className="sm:hidden">
+      {/* Short label: it sits beside the tabs, and the icon names the platform. */}
+      <span title={t('results.signInWith', { platform: label })}>
         {redirecting ? t('results.signingIn') : t('auth.signIn')}
       </span>
     </button>
@@ -124,18 +122,17 @@ const BlueskyHeaderSignIn = () => {
         className={buttonClass}
       >
         <Icon className="h-4 w-4" aria-hidden="true" />
-        <span className="hidden sm:inline">
-          {t('results.signInWith', { platform: 'Bluesky' })}
+        <span title={t('results.signInWith', { platform: 'Bluesky' })}>
+          {t('auth.signIn')}
         </span>
-        <span className="sm:hidden">{t('auth.signIn')}</span>
       </button>
 
-      {/* Phones: pinned to the viewport edges, since the button isn't the
-          rightmost header item and a right-aligned w-72 would spill off-screen. */}
+      {/* Phones: pinned to the viewport edges, since theme and language sit to
+          the button's right and a right-aligned w-72 would spill off-screen. */}
       {open && (
         <form
           onSubmit={submit}
-          className="fixed inset-x-4 top-14 z-20 space-y-2 sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-1 sm:w-72 rounded-lg border border-border bg-surface p-3 shadow-lg shadow-black/30"
+          className="fixed inset-x-4 top-14 z-40 space-y-2 sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-1 sm:w-72 rounded-lg border border-border bg-surface p-3 shadow-lg shadow-black/30"
         >
           <p className="text-xs text-fg-muted">{t('results.signInNote')}</p>
           <input

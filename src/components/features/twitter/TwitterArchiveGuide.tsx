@@ -18,6 +18,10 @@ import {
   computeArchiveUnfollowers,
 } from '../../../lib/twitterArchive'
 import { usePageSize } from '../../../hooks/usePageSize'
+import { track } from '../../../lib/analytics'
+import { TWITTER_TAB } from '../../../platforms'
+import { ResultsCta } from '../../seo/ResultsCta'
+import { ResultSummary } from '../../ui/ResultSummary'
 import type { Account } from '../../../types/platform'
 
 /**
@@ -66,6 +70,7 @@ export const TwitterArchiveGuide = () => {
 
       const unfollowers = computeArchiveUnfollowers(followingTexts, followerTexts)
       setResult(unfollowers)
+      track('archive_compared', { platform: 'twitter', result_count: unfollowers.length })
       if (skipped.length > 0) {
         toast.message(t('twitter.ignoredFiles', { count: skipped.length }))
       }
@@ -262,15 +267,17 @@ const ResultsView = ({
 
   return (
     <div ref={topRef} className="flex flex-col gap-4 scroll-mt-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-fg-muted">
-          <Trans i18nKey="twitter.resultSummary" count={count} components={[bold]} />
-        </p>
-        <div className="flex items-center gap-2">
-          <CopyButton accounts={accounts} />
-          <BackButton onReset={onReset} />
-        </div>
-      </div>
+      <ResultSummary
+        count={count}
+        actions={
+          <>
+            <CopyButton accounts={accounts} />
+            <BackButton onReset={onReset} />
+          </>
+        }
+      >
+        <Trans i18nKey="twitter.resultSummary" count={count} components={[bold]} />
+      </ResultSummary>
 
       <div className="space-y-1.5 rounded-lg border border-border bg-surface px-4 py-2.5 text-xs text-fg-muted">
         <p>{t('twitter.viewOnlyNote')}</p>
@@ -332,6 +339,8 @@ const ResultsView = ({
           </button>
         </div>
       )}
+
+      <ResultsCta tab="twitter" platformLabel={TWITTER_TAB.label} count={count} />
     </div>
   )
 }
