@@ -235,7 +235,6 @@ export const es: Translation = {
       'Instagram no ofrece una API pública para listas de seguidores, así que esta funciona de otra forma: copias un pequeño script y lo pegas en la consola de tu navegador mientras estás en Instagram. Se ejecuta en tu propia sesión.',
     introPrivacy:
       'No se envía nada a ningún servidor — el script solo se comunica con Instagram, directamente desde tu navegador. No podemos ver tu cuenta ni tus datos.',
-    consoleLabel: 'Pegar en la consola de DevTools',
     loading: 'Cargando…',
     copied: '¡Copiado!',
     copyCode: 'Copiar el código',
@@ -244,7 +243,7 @@ export const es: Translation = {
     copyFailed: 'No se pudo copiar al portapapeles',
     tip_intro:
       'Un script de un solo uso que pegas tú mismo — no se instala y no cambia nada hasta que lo ejecutas.',
-    step1: 'Copia el script con el botón de arriba.',
+    step1: 'Copia el script con el botón de abajo.',
     step2_pre: 'Abre',
     step2_post: 'en este navegador y asegúrate de haber iniciado sesión.',
     step3_pre: 'Abre la consola de desarrollador y luego haz clic en la pestaña',

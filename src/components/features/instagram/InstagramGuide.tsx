@@ -5,7 +5,6 @@ import {
   ShieldAlert,
   ExternalLink,
   LoaderCircle,
-  Terminal,
   Bookmark,
   Hand,
   Sparkles,
@@ -13,6 +12,7 @@ import {
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { track } from '../../../lib/analytics'
+import { CodeViewer } from '../../ui/CodeViewer'
 
 /**
  * Instagram has no server-side follower API, so this can't run on our backend.
@@ -140,66 +140,46 @@ export const InstagramGuide = () => {
     </>,
   ]
 
+  const copyButton = (
+    <button
+      onClick={copyCode}
+      disabled={!code}
+      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-brand-500 px-2.5 py-1 text-xs font-medium text-bg outline-none transition-colors hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {code === null ? (
+        <>
+          <LoaderCircle
+            className="h-3.5 w-3.5 motion-safe:animate-spin"
+            aria-hidden="true"
+          />
+          {t('instagram.loading')}
+        </>
+      ) : copied ? (
+        <>
+          <Check
+            className="h-3.5 w-3.5 motion-safe:animate-pop"
+            aria-hidden="true"
+          />
+          {t('instagram.copied')}
+        </>
+      ) : (
+        <>
+          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+          {t('instagram.copyCode')}
+        </>
+      )}
+    </button>
+  )
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Intro */}
+      {/* What this is and why it's a script */}
       <div className="rounded-lg border border-border bg-surface px-4 py-3">
         <p className="text-sm text-fg">{t('instagram.introBody')}</p>
         <p className="mt-2 text-sm text-fg-muted">{t('instagram.introPrivacy')}</p>
       </div>
 
-      {/* The script + copy button */}
-      <div className="overflow-hidden rounded-lg border border-border bg-bg">
-        <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-2">
-          <Terminal
-            className="h-3.5 w-3.5 shrink-0 text-fg-muted"
-            aria-hidden="true"
-          />
-          <span className="truncate font-mono text-xs text-fg-muted">
-            {t('instagram.consoleLabel')}
-          </span>
-        </div>
-        {/* The copy button floats in the code block's top-right corner so the
-            header label always fits on one line, even on mobile. */}
-        <div className="relative">
-          <button
-            onClick={copyCode}
-            disabled={!code}
-            className="absolute top-2 right-2 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-brand-500 px-2.5 py-1.5 text-sm font-medium text-bg shadow-sm outline-none transition-colors hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {code === null ? (
-              <>
-                <LoaderCircle
-                  className="h-4 w-4 motion-safe:animate-spin"
-                  aria-hidden="true"
-                />
-                {t('instagram.loading')}
-              </>
-            ) : copied ? (
-              <>
-                <Check
-                  className="h-4 w-4 motion-safe:animate-pop"
-                  aria-hidden="true"
-                />
-                {t('instagram.copied')}
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4" aria-hidden="true" />
-                {t('instagram.copyCode')}
-              </>
-            )}
-          </button>
-          <pre className="max-h-56 overflow-auto p-3 text-xs leading-relaxed text-fg-muted">
-            <code className="font-mono break-all whitespace-pre-wrap">
-              {code === null ? t('instagram.loadingScript') : code}
-            </code>
-          </pre>
-        </div>
-      </div>
-      <p className="-mt-2 text-xs text-fg-muted">{t('instagram.tip_intro')}</p>
-
-      {/* Steps */}
+      {/* Steps first, so the code below reads as "step 1" */}
       <ol className="flex flex-col gap-3">
         {steps.map((content, index) => (
           <li key={index} className="flex gap-3">
@@ -210,6 +190,18 @@ export const InstagramGuide = () => {
           </li>
         ))}
       </ol>
+
+      {/* The script, with its copy button */}
+      <div className="flex flex-col gap-2">
+        <CodeViewer
+          fileName="instagram-unfollower.js"
+          language="JavaScript"
+          code={code || null}
+          placeholder={t('instagram.loadingScript')}
+          actions={copyButton}
+        />
+        <p className="text-xs text-fg-muted">{t('instagram.tip_intro')}</p>
+      </div>
 
       {/* Troubleshooting */}
       <p className="rounded-lg border border-border bg-surface px-4 py-2.5 text-xs text-fg-muted">

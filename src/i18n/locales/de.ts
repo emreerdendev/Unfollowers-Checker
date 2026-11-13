@@ -236,7 +236,6 @@ export const de: Translation = {
       'Instagram bietet keine öffentliche API für Follower-Listen, daher funktioniert das hier anders: Du kopierst ein kleines Skript und fügst es in die Konsole deines Browsers ein, während du auf Instagram bist. Es läuft in deiner eigenen Sitzung.',
     introPrivacy:
       'Es wird nichts an einen Server gesendet — das Skript kommuniziert nur mit Instagram, direkt aus deinem Browser. Wir können dein Konto oder deine Daten nicht sehen.',
-    consoleLabel: 'In die DevTools-Konsole einfügen',
     loading: 'Wird geladen…',
     copied: 'Kopiert!',
     copyCode: 'Code kopieren',
@@ -245,7 +244,7 @@ export const de: Translation = {
     copyFailed: 'Konnte nicht in die Zwischenablage kopieren',
     tip_intro:
       'Ein einmaliges Skript, das du selbst einfügst — es wird nicht installiert und ändert nichts, bis du es ausführst.',
-    step1: 'Kopiere das Skript mit dem Button oben.',
+    step1: 'Kopiere das Skript mit dem Button unten.',
     step2_pre: 'Öffne',
     step2_post: 'in diesem Browser und stelle sicher, dass du angemeldet bist.',
     step3_pre: 'Öffne die Entwicklerkonsole und klicke dann auf den Tab',

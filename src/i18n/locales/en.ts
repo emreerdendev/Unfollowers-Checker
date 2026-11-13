@@ -233,7 +233,6 @@ export const en = {
       "Instagram doesn't offer a public API for follower lists, so this one works differently: you copy a small script and paste it into your browser's console while on Instagram. It runs in your own session.",
     introPrivacy:
       "Nothing is sent to any server — the script talks only to Instagram, directly from your browser. We can't see your account or your data.",
-    consoleLabel: 'Paste into the DevTools console',
     loading: 'Loading…',
     copied: 'Copied!',
     copyCode: 'Copy the code',
@@ -242,7 +241,7 @@ export const en = {
     copyFailed: 'Could not copy to clipboard',
     tip_intro:
       "A one-time script you paste yourself — it isn't installed and changes nothing until you run it.",
-    step1: 'Copy the script using the button above.',
+    step1: 'Copy the script with the button below.',
     step2_pre: 'Open',
     step2_post: "in this browser and make sure you're signed in.",
     step3_pre: 'Open the developer console, then click the',

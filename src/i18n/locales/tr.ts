@@ -235,7 +235,6 @@ export const tr: Translation = {
       'Instagram, takipçi listeleri için herkese açık bir API sunmuyor, bu yüzden bu farklı çalışır: küçük bir script’i kopyalayıp Instagram’dayken tarayıcının konsoluna yapıştırırsın. Senin kendi oturumunda çalışır.',
     introPrivacy:
       'Hiçbir sunucuya bir şey gönderilmez — script yalnızca Instagram ile, doğrudan tarayıcından konuşur. Hesabını veya verilerini göremeyiz.',
-    consoleLabel: 'DevTools konsoluna yapıştır',
     loading: 'Yükleniyor…',
     copied: 'Kopyalandı!',
     copyCode: 'Kodu kopyala',
@@ -244,7 +243,7 @@ export const tr: Translation = {
     copyFailed: 'Panoya kopyalanamadı',
     tip_intro:
       'Kendin yapıştırdığın tek seferlik bir script — kurulmaz ve sen çalıştırana kadar hiçbir şeyi değiştirmez.',
-    step1: 'Yukarıdaki butonla script’i kopyala.',
+    step1: 'Aşağıdaki düğmeyle script’i kopyala.',
     step2_pre: 'Bu tarayıcıda',
     step2_post: 'adresini aç ve giriş yapmış olduğundan emin ol.',
     step3_pre: 'Geliştirici konsolunu aç, sonra',

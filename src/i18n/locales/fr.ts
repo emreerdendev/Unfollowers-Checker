@@ -235,7 +235,6 @@ export const fr: Translation = {
       'Instagram ne propose pas d’API publique pour les listes d’abonnés, alors celui-ci fonctionne différemment : vous copiez un petit script et le collez dans la console de votre navigateur pendant que vous êtes sur Instagram. Il s’exécute dans votre propre session.',
     introPrivacy:
       'Rien n’est envoyé à un serveur — le script communique uniquement avec Instagram, directement depuis votre navigateur. Nous ne pouvons pas voir votre compte ni vos données.',
-    consoleLabel: 'Coller dans la console des DevTools',
     loading: 'Chargement…',
     copied: 'Copié !',
     copyCode: 'Copier le code',
@@ -244,7 +243,7 @@ export const fr: Translation = {
     copyFailed: 'Impossible de copier dans le presse-papiers',
     tip_intro:
       'Un script à usage unique que vous collez vous-même — il n’est pas installé et ne change rien tant que vous ne l’exécutez pas.',
-    step1: 'Copiez le script avec le bouton ci-dessus.',
+    step1: 'Copiez le script avec le bouton ci-dessous.',
     step2_pre: 'Ouvrez',
     step2_post: 'dans ce navigateur et assurez-vous d’être connecté.',
     step3_pre: 'Ouvrez la console développeur, puis cliquez sur l’onglet',
