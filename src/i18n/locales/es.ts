@@ -192,7 +192,7 @@ export const es: Translation = {
     authorLabel: 'Sobre el autor',
     guides: 'Guías',
     viewSource: 'Dale una estrella en GitHub',
-    support: 'Apóyame',
+    sponsor: 'Sponsor',
     discord: '¡Únete a nuestra comunidad de Discord!',
     privacy: 'Privacidad',
     contact: '{{email}}',

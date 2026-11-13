@@ -53,7 +53,7 @@ export const Footer = () => {
   const card =
     'focus-visible:ring-brand-400 inline-flex h-7 items-center gap-1.5 px-2.5 font-medium transition-colors outline-none focus-visible:ring-2'
 
-  // Grouped: contact, community, support.
+  // Grouped: contact, community, sponsorship.
   const authorGroups: StripLink[][] = [
     [
       {
@@ -96,13 +96,13 @@ export const Footer = () => {
     ],
     [
       {
-        id: 'support',
+        id: 'sponsor',
         href: SPONSOR_URL,
-        className: `${card} border-brand-500/30 bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 hover:text-brand-300 rounded-full border`,
+        className: `${card} border-brand-500/30 bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 hover:text-brand-300 rounded-full border`,
         children: (
           <>
             <Heart className="h-4 w-4 fill-current" aria-hidden="true" />
-            {t('footer.support')}
+            {t('footer.sponsor')}
           </>
         ),
       },

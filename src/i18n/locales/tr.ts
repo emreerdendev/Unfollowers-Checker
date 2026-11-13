@@ -192,7 +192,7 @@ export const tr: Translation = {
     authorLabel: 'Geliştirici hakkında',
     guides: 'Rehberler',
     viewSource: 'GitHub’da yıldızla',
-    support: 'Destek ol',
+    sponsor: 'Sponsor',
     discord: 'Discord topluluğumuza katıl!',
     privacy: 'Gizlilik',
     contact: '{{email}}',

@@ -190,7 +190,7 @@ export const en = {
     authorLabel: 'About the author',
     guides: 'Guides',
     viewSource: 'Star on GitHub',
-    support: 'Support',
+    sponsor: 'Sponsor',
     discord: 'Join our Discord community',
     privacy: 'Privacy',
     contact: '{{email}}',

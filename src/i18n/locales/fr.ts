@@ -192,7 +192,7 @@ export const fr: Translation = {
     authorLabel: 'À propos de l’auteur',
     guides: 'Guides',
     viewSource: 'Ajouter une étoile sur GitHub',
-    support: 'Soutenir',
+    sponsor: 'Sponsor',
     discord: 'Rejoins notre communauté Discord !',
     privacy: 'Confidentialité',
     contact: '{{email}}',
