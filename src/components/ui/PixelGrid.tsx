@@ -202,6 +202,9 @@ export const PixelGrid = ({
     }
 
     const draw = (now: number) => {
+      // Not laid out yet, or hidden: nothing to draw (and drawing a 0×0
+      // canvas throws).
+      if (!canvas.width || !canvas.height) return
       // Sizes in CSS pixels; the backing store is scaled by the pixel ratio.
       const width = canvas.clientWidth
       const height = canvas.clientHeight

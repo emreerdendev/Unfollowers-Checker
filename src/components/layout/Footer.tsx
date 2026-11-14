@@ -85,10 +85,11 @@ export const Footer = () => {
         id: 'discord',
         href: DISCORD_URL,
         title: `${t('footer.discord')} — ${COMMUNITY_FULL_NAME}`,
-        className: `${card} rounded-md bg-[#5865F2] text-white hover:bg-[#4752C4]`,
+        // The icon keeps wiggling while hovered.
+        className: `${card} group rounded-md bg-[#5865F2] text-white hover:bg-[#4752C4]`,
         children: (
           <>
-            <DiscordIcon className="h-4 w-4" />
+            <DiscordIcon className="group-hover:animate-icon-wiggle h-4 w-4 motion-reduce:animate-none" />
             {COMMUNITY_NAME}
           </>
         ),
@@ -98,10 +99,17 @@ export const Footer = () => {
       {
         id: 'sponsor',
         href: SPONSOR_URL,
-        className: `${card} border-green-600/40 dark:border-brand-500/30 bg-[color-mix(in_srgb,var(--color-brand-500)_20%,var(--color-bg))] text-green-700 dark:text-brand-400 hover:bg-[color-mix(in_srgb,var(--color-brand-500)_30%,var(--color-bg))] hover:text-green-800 dark:hover:text-brand-300 rounded-full border`,
+        // Hover lifts the pill one shade with an opaque colour, never a
+        // translucent one: a see-through hover lets the strip show through,
+        // so the pill dims and its text loses contrast. The border firms up
+        // and the heart gives one beat (scale) instead.
+        className: `${card} group rounded-full border border-emerald-600/35 bg-emerald-50 text-emerald-800 hover:border-emerald-600/70 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-950 dark:text-emerald-400 dark:hover:border-emerald-400/60 dark:hover:bg-emerald-900`,
         children: (
           <>
-            <Heart className="h-4 w-4 fill-current" aria-hidden="true" />
+            <Heart
+              className="h-4 w-4 fill-current transition-transform duration-200 group-hover:scale-110 motion-reduce:transition-none"
+              aria-hidden="true"
+            />
             {t('footer.sponsor')}
           </>
         ),
@@ -110,7 +118,7 @@ export const Footer = () => {
         id: 'coffee',
         href: COFFEE_URL,
         className:
-          'focus-visible:ring-brand-400 inline-flex h-7 rounded-md transition-opacity outline-none hover:opacity-90 focus-visible:ring-2',
+          'focus-visible:ring-brand-400 inline-flex h-7 rounded-md transition-transform duration-200 outline-none hover:scale-105 focus-visible:ring-2 motion-reduce:transition-none motion-reduce:hover:scale-100',
         children: (
           <img
             src={COFFEE_BUTTON_IMG}

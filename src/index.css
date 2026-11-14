@@ -49,6 +49,28 @@
       transform: rotate(0deg) scale(1);
     }
   }
+
+  /* Hover wiggle for an icon: keeps going while the pointer stays on it */
+  --animate-icon-wiggle: icon-wiggle 600ms ease-in-out infinite;
+
+  @keyframes icon-wiggle {
+    0%,
+    100% {
+      transform: rotate(0);
+    }
+    20% {
+      transform: rotate(-12deg);
+    }
+    40% {
+      transform: rotate(10deg);
+    }
+    60% {
+      transform: rotate(-6deg);
+    }
+    80% {
+      transform: rotate(3deg);
+    }
+  }
 }
 
 /* Colour tokens resolve to CSS variables so they can swap per theme. */
